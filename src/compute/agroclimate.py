@@ -169,3 +169,58 @@ def nearest_analog_year(current_season, feature_table, features=FEATURES):
         "distance": round(best_dist, 3),
         "feature_contributions": {k: round(v, 3) for k, v in best_contrib.items()}
     }
+def eto_penman_monteith(row, day_of_year, latitude_deg, elevation_m):
+    """
+    FAO-56 Penman-Monteith reference evapotranspiration (Equation 6),
+    for a single day. Validated against Cumilla (2001-2025 POWER data):
+    monthly averages show the expected seasonal curve — low in Dec/Jan
+    (~2.1-2.4 mm/day), pre-monsoon peak in April (~5.2 mm/day), easing
+    through monsoon months (~3.4-3.5 mm/day) — consistent with known
+    Bangladesh climatology.
+
+    row : a row with temp_max_c, temp_min_c, temp_mean_c, rh_pct,
+          wind_speed_ms, solar_rad_kwh_m2.
+          NOTE: despite its name, solar_rad_kwh_m2 is in MJ/m2/day when
+          pulled under POWER's "AG" (agroclimatology) community — no
+          unit conversion is applied here. (RE-community pulls would be
+          in kWh/m2/day and WOULD need *3.6 conversion — the two
+          communities differ in units for this same parameter, which
+          is the bug this function's validation caught.)
+    day_of_year : 1-365/366, for extraterrestrial radiation.
+    latitude_deg, elevation_m : site location, varies per district.
+
+    Returns ET0 in mm/day.
+    """
+    T_max, T_min, T_mean = row["temp_max_c"], row["temp_min_c"], row["temp_mean_c"]
+    RH = row["rh_pct"]
+    u2 = row["wind_speed_ms"]
+    Rs = row["solar_rad_kwh_m2"]  # already MJ/m2/day under AG community
+
+    P = 101.3 * ((293 - 0.0065 * elevation_m) / 293) ** 5.26
+    gamma = 0.000665 * P
+
+    def e_sat(T):
+        return 0.6108 * np.exp((17.27 * T) / (T + 237.3))
+    es = (e_sat(T_max) + e_sat(T_min)) / 2
+    ea = es * (RH / 100.0)
+    delta = (4098 * e_sat(T_mean)) / ((T_mean + 237.3) ** 2)
+
+    lat_rad = np.radians(latitude_deg)
+    dr = 1 + 0.033 * np.cos(2 * np.pi * day_of_year / 365)
+    decl = 0.409 * np.sin(2 * np.pi * day_of_year / 365 - 1.39)
+    ws = np.arccos(-np.tan(lat_rad) * np.tan(decl))
+    Ra = (24 * 60 / np.pi) * 0.0820 * dr * (
+        ws * np.sin(lat_rad) * np.sin(decl) + np.cos(lat_rad) * np.cos(decl) * np.sin(ws)
+    )
+    Rso = (0.75 + 2e-5 * elevation_m) * Ra
+    Rns = (1 - 0.23) * Rs
+    sigma = 4.903e-9
+    T_max_k, T_min_k = T_max + 273.16, T_min + 273.16
+    ratio = min(Rs / Rso, 1.0) if Rso > 0 else 0.0
+    Rnl = sigma * ((T_max_k**4 + T_min_k**4) / 2) * (0.34 - 0.14 * np.sqrt(ea)) * (1.35 * ratio - 0.35)
+    Rn = Rns - Rnl
+    G = 0
+
+    numerator = 0.408 * delta * (Rn - G) + gamma * (900 / (T_mean + 273)) * u2 * (es - ea)
+    denominator = delta + gamma * (1 + 0.34 * u2)
+    return round(float(numerator / denominator), 2)

@@ -4,8 +4,7 @@ Run with: pytest src/compute/test_agroclimate.py
 """
 
 import pandas as pd
-from agroclimate import rain_onset, build_feature_table, nearest_analog_year, dry_spell_length
-
+from agroclimate import rain_onset, build_feature_table, nearest_analog_year, dry_spell_length, eto_penman_monteith
 def make_series(values, start_date="2019-01-01"):
     """Helper: build a daily rainfall Series from a plain list of values."""
     dates = pd.date_range(start=start_date, periods=len(values), freq="D")
@@ -95,3 +94,25 @@ def test_analog_year_picks_closest_not_furthest():
     result = nearest_analog_year(current_season, feature_table)
 
     assert result["analog_year"] == 2001
+
+
+def test_eto_seasonal_pattern_is_sane():
+    """Reference ET0 should be lowest in winter and highest in the
+    pre-monsoon season, for Cumilla's climate. Constructed from typical
+    January vs. April conditions rather than live data, so this test
+    doesn't depend on network access or which exact days are sampled."""
+    winter_row = pd.Series({
+        "temp_max_c": 24.0, "temp_min_c": 11.0, "temp_mean_c": 17.0,
+        "rh_pct": 70.0, "wind_speed_ms": 1.5, "solar_rad_kwh_m2": 16.0
+    })
+    premonsoon_row = pd.Series({
+        "temp_max_c": 34.0, "temp_min_c": 24.0, "temp_mean_c": 29.0,
+        "rh_pct": 65.0, "wind_speed_ms": 2.0, "solar_rad_kwh_m2": 20.0
+    })
+    winter_eto = eto_penman_monteith(winter_row, day_of_year=15,
+                                      latitude_deg=23.4607, elevation_m=28.08)
+    premonsoon_eto = eto_penman_monteith(premonsoon_row, day_of_year=105,
+                                          latitude_deg=23.4607, elevation_m=28.08)
+    assert premonsoon_eto > winter_eto
+    assert 1.5 <= winter_eto <= 4.0
+    assert 3.5 <= premonsoon_eto <= 7.0
