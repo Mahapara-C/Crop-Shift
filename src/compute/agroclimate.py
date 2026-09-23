@@ -7,7 +7,7 @@ touched by any model at runtime.
 """
 
 import pandas as pd
-
+import numpy as np
 
 def rain_onset(daily_rainfall, year, min_week_mm=20.0, dry_spell_days=7,
                dry_day_threshold=1.0, confirm_window_days=30, min_confirm_total_mm=450.0):
@@ -70,3 +70,102 @@ def rain_onset(daily_rainfall, year, min_week_mm=20.0, dry_spell_days=7,
                     "onset_amount_mm": round(window_total, 1)
                 }
     return {"year": year, "onset_doy": None, "onset_date": None, "onset_amount_mm": None}
+
+
+
+
+def dry_spell_length(daily_rainfall, dry_day_threshold=1.0):
+    """Longest consecutive run of dry days across the WHOLE year — used as
+    a matching feature (distinct from the onset false-start check inside
+    rain_onset())."""
+    is_dry = (daily_rainfall < dry_day_threshold)
+    if not is_dry.any():
+        return 0
+    return int(is_dry.groupby((~is_dry).cumsum()).cumsum().max())
+
+
+def build_feature_table(df, years=range(2001, 2026)):
+    """One row per year: onset_doy, onset_amount_mm, dry_spell_days,
+    mean_t2m_c — the four features nearest_analog_year() matches on.
+    Years with no valid monsoon onset (per rain_onset()) are excluded
+    entirely, since they have no onset_doy/onset_amount_mm to match on.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Daily data indexed by date, with 'rainfall_mm' and 'temp_c' columns
+        (as produced by the NASA POWER pull).
+    years : iterable of int
+        Which years to include, if present in df.
+
+    Returns
+    -------
+    pd.DataFrame indexed by year, with the four feature columns.
+    """
+    rows = []
+    for yr in years:
+        year_data = df[df.index.year == yr]
+        if len(year_data) < 300:
+            continue
+        onset = rain_onset(year_data["rainfall_mm"], yr)
+        if onset["onset_doy"] is None:
+            continue
+        rows.append({
+            "year": yr,
+            "onset_doy": onset["onset_doy"],
+            "onset_amount_mm": onset["onset_amount_mm"],
+            "dry_spell_days": dry_spell_length(year_data["rainfall_mm"]),
+            "mean_t2m_c": year_data["temp_c"].mean()
+        })
+    return pd.DataFrame(rows).set_index("year")
+
+
+FEATURES = ["onset_doy", "onset_amount_mm", "dry_spell_days", "mean_t2m_c"]
+
+
+def nearest_analog_year(current_season, feature_table, features=FEATURES):
+    """
+    Finds the historical year whose climate signature is closest to
+    current_season, using z-normalized Euclidean distance. Matches ONLY
+    on POWER-derived features (never SMAP — SMAP only goes back to 2015,
+    so using it here would shrink the candidate pool from ~25 years to
+    ~10; SMAP is used only inside backtest_rotation() on whichever year
+    gets picked here).
+
+    current_season : dict
+        Same feature keys as `features`, describing the season to match
+        (e.g. this year's observed onset so far).
+    feature_table : pd.DataFrame
+        From build_feature_table() — one row per historical year.
+
+    Z-normalization uses the MEAN and STD DEVIATION of each feature
+    across all years in feature_table, applied identically to
+    current_season, so no single feature dominates the distance purely
+    due to its raw units (e.g. onset_doy spans ~100 days while
+    mean_t2m_c spans ~1 degree).
+
+    Returns the matched year, its raw distance, and each feature's
+    individual normalized contribution — so the interface can explain
+    WHY this year was chosen.
+    """
+    means = feature_table[features].mean()
+    stds = feature_table[features].std()
+
+    normalized_table = (feature_table[features] - means) / stds
+    cur_normalized = {f: (current_season[f] - means[f]) / stds[f] for f in features}
+    cur_vec = np.array([cur_normalized[f] for f in features])
+
+    best_year, best_dist, best_contrib = None, np.inf, None
+    for year, row in normalized_table.iterrows():
+        vec = row[features].values.astype(float)
+        diffs = np.abs(cur_vec - vec)
+        dist = float(np.linalg.norm(diffs))
+        if dist < best_dist:
+            best_year, best_dist = year, dist
+            best_contrib = dict(zip(features, diffs.tolist()))
+
+    return {
+        "analog_year": int(best_year),
+        "distance": round(best_dist, 3),
+        "feature_contributions": {k: round(v, 3) for k, v in best_contrib.items()}
+    }
