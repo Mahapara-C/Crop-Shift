@@ -2,9 +2,9 @@
 Unit tests for src/compute/agroclimate.py
 Run with: pytest src/compute/test_agroclimate.py
 """
-
+import numpy as np
 import pandas as pd
-from agroclimate import rain_onset, build_feature_table, nearest_analog_year, dry_spell_length, eto_penman_monteith
+from agroclimate import rain_onset, build_feature_table, nearest_analog_year, dry_spell_length, eto_penman_monteith,backtest_rotation
 def make_series(values, start_date="2019-01-01"):
     """Helper: build a daily rainfall Series from a plain list of values."""
     dates = pd.date_range(start=start_date, periods=len(values), freq="D")
@@ -116,3 +116,87 @@ def test_eto_seasonal_pattern_is_sane():
     assert premonsoon_eto > winter_eto
     assert 1.5 <= winter_eto <= 4.0
     assert 3.5 <= premonsoon_eto <= 7.0
+
+def test_backtest_rotation_all_wet_days_are_usable():
+    """If soil moisture during the rotation is comfortably higher than a
+    large historical background, every day should be usable — regardless
+    of stage-specific Kc demand."""
+    rotation_dates = pd.date_range("2019-01-01", periods=150, freq="D")
+    power_df = pd.DataFrame({
+        "temp_max_c": 30.0, "temp_min_c": 20.0, "temp_mean_c": 25.0,
+        "rh_pct": 70.0, "wind_speed_ms": 1.5, "solar_rad_kwh_m2": 18.0
+    }, index=rotation_dates)
+
+    # Large, separate historical background (low values), plus the
+    # rotation's own dates tied at a value clearly above ALL of it —
+    # wide margin avoids tie-ranking ambiguity at the boundary.
+    background_dates = pd.date_range("2010-01-01", periods=1000, freq="D")
+    background_series = pd.Series(np.linspace(0.05, 0.19, 1000), index=background_dates)
+    rotation_series = pd.Series([0.50] * 150, index=rotation_dates)
+    smap_series = pd.concat([background_series, rotation_series])
+
+    kc_table = pd.DataFrame({
+        "crop": ["rice"] * 4,
+        "stage": ["initial", "development", "mid", "late"],
+        "length_days": [30, 30, 60, 30],
+        "kc": [1.05, 1.05, 1.20, 0.60]
+    })
+
+    rotation = [{"crop": "rice", "start_date": "2019-01-01"}]
+    result = backtest_rotation(rotation, 2019, power_df, smap_series, kc_table,
+                                latitude_deg=23.46, elevation_m=28.0)
+
+    assert result["total_days"] == 150
+    assert result["usable_moisture_days"] == 150
+
+
+def test_backtest_rotation_all_dry_days_are_unusable():
+    """If soil moisture during the rotation is comfortably lower than a
+    large historical background, no day should be usable."""
+    rotation_dates = pd.date_range("2019-01-01", periods=150, freq="D")
+    power_df = pd.DataFrame({
+        "temp_max_c": 30.0, "temp_min_c": 20.0, "temp_mean_c": 25.0,
+        "rh_pct": 70.0, "wind_speed_ms": 1.5, "solar_rad_kwh_m2": 18.0
+    }, index=rotation_dates)
+
+    background_dates = pd.date_range("2010-01-01", periods=1000, freq="D")
+    background_series = pd.Series(np.linspace(0.30, 0.44, 1000), index=background_dates)
+    rotation_series = pd.Series([0.05] * 150, index=rotation_dates)
+    smap_series = pd.concat([background_series, rotation_series])
+
+    kc_table = pd.DataFrame({
+        "crop": ["rice"] * 4,
+        "stage": ["initial", "development", "mid", "late"],
+        "length_days": [30, 30, 60, 30],
+        "kc": [1.05, 1.05, 1.20, 0.60]
+    })
+
+    rotation = [{"crop": "rice", "start_date": "2019-01-01"}]
+    result = backtest_rotation(rotation, 2019, power_df, smap_series, kc_table,
+                                latitude_deg=23.46, elevation_m=28.0)
+
+    assert result["usable_moisture_days"] == 0
+
+def test_backtest_rotation_missing_dates_are_skipped_not_crashed():
+    """Dates outside the available power/smap range should be skipped
+    gracefully, not raise an error."""
+    dates = pd.date_range("2019-01-01", periods=10, freq="D")  # very short range
+    power_df = pd.DataFrame({
+        "temp_max_c": 30.0, "temp_min_c": 20.0, "temp_mean_c": 25.0,
+        "rh_pct": 70.0, "wind_speed_ms": 1.5, "solar_rad_kwh_m2": 18.0
+    }, index=dates)
+    smap_series = pd.Series([0.25] * 10, index=dates)
+
+    kc_table = pd.DataFrame({
+        "crop": ["rice"] * 4,
+        "stage": ["initial", "development", "mid", "late"],
+        "length_days": [30, 30, 60, 30],  # rotation runs well past available data
+        "kc": [1.05, 1.05, 1.20, 0.60]
+    })
+
+    rotation = [{"crop": "rice", "start_date": "2019-01-01"}]
+    result = backtest_rotation(rotation, 2019, power_df, smap_series, kc_table,
+                                latitude_deg=23.46, elevation_m=28.0)
+
+    # Should only count the 10 days actually available, not crash on the other 140
+    assert result["total_days"] == 10

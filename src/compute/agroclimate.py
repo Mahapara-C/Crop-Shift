@@ -224,3 +224,110 @@ def eto_penman_monteith(row, day_of_year, latitude_deg, elevation_m):
     numerator = 0.408 * delta * (Rn - G) + gamma * (900 / (T_mean + 273)) * u2 * (es - ea)
     denominator = delta + gamma * (1 + 0.34 * u2)
     return round(float(numerator / denominator), 2)
+
+def backtest_rotation(rotation_plan, analog_year, power_df, smap_series, kc_table,
+                       latitude_deg, elevation_m,
+                       kc_low=0.3, kc_high=1.2, pctl_low=20, pctl_high=60):
+    """
+    Replays a candidate crop rotation against the REAL observed SMAP and
+    POWER data from analog_year, and counts "usable soil moisture days" —
+    days where soil moisture was adequate for that day's crop water demand.
+
+    SIMPLIFIED METHOD (documented placeholder — see NOTE below):
+    Since field capacity/wilting point data isn't yet available per
+    district, adequacy is judged by ranking each day's SMAP root-zone
+    moisture against that SAME location's own historical percentile
+    distribution (computed from its full SMAP record), rather than an
+    absolute soil-physics threshold. The required percentile scales
+    linearly with that day's crop coefficient (Kc): a low-Kc day
+    (e.g. early growth, kc_low=0.3) only needs the 20th percentile
+    (pctl_low) or better; a peak-Kc day (kc_high=1.2, mid-season) needs
+    the 60th percentile (pctl_high) or better. This avoids needing soil
+    survey data we don't have yet, at the cost of being a proxy rather
+    than a true water-balance calculation.
+
+    NOTE: This is the pre-October-1 simplified version. A fuller
+    FAO-56 Chapter 8 style day-by-day root-zone depletion model
+    (using actual field capacity / wilting point / management allowable
+    depletion) is planned as a post-Oct-1 upgrade once ISRIC SoilGrids
+    data is incorporated — see prompt-2.md's data inventory.
+
+    Parameters
+    ----------
+    rotation_plan : list of dicts, e.g.
+        [{"crop": "rice", "start_date": "2019-05-15"},
+         {"crop": "mung_bean", "start_date": "2019-09-20"}]
+    analog_year : int — the year whose real data we're replaying.
+    power_df : DataFrame — that district's full POWER data (needs
+               temp_max_c, temp_min_c, temp_mean_c, rh_pct, wind_speed_ms,
+               solar_rad_kwh_m2), indexed by date.
+    smap_series : Series of daily sm_rootzone values, indexed by date,
+                  for that district's FULL history (used both to look up
+                  the analog year's values AND to compute the historical
+                  percentile distribution).
+    kc_table : DataFrame from the kc_table.csv (crop, stage, length_days, kc).
+    latitude_deg, elevation_m : for ET0 calculation.
+
+    Returns
+    -------
+    dict with per-crop day counts, usable_moisture_days, and the daily
+    detail table (for the provenance drawer / debugging).
+    """
+    smap_sorted = smap_series.dropna().sort_values().values
+
+    def moisture_percentile(value):
+        idx = np.searchsorted(smap_sorted, value, side='right')
+        return 100.0 * idx / len(smap_sorted)
+
+    def required_percentile(kc):
+        kc_clamped = max(kc_low, min(kc_high, kc))
+        frac = (kc_clamped - kc_low) / (kc_high - kc_low)
+        return pctl_low + frac * (pctl_high - pctl_low)
+
+    daily_rows = []
+
+    for entry in rotation_plan:
+        crop = entry["crop"]
+        start = pd.Timestamp(entry["start_date"])
+        crop_stages = kc_table[kc_table["crop"] == crop].reset_index(drop=True)
+
+        day_offset = 0
+        for _, stage_row in crop_stages.iterrows():
+            stage_name = stage_row["stage"]
+            kc = stage_row["kc"]
+            length = int(stage_row["length_days"])
+
+            for d in range(length):
+                current_date = start + pd.Timedelta(days=day_offset)
+                day_offset += 1
+
+                if current_date not in power_df.index or current_date not in smap_series.index:
+                    continue
+
+                row = power_df.loc[current_date]
+                doy = current_date.dayofyear
+                eto = eto_penman_monteith(row, doy, latitude_deg, elevation_m)
+                demand_mm = kc * eto
+
+                sm_value = smap_series.loc[current_date]
+                pctl = moisture_percentile(sm_value)
+                req_pctl = required_percentile(kc)
+                usable = pctl >= req_pctl
+
+                daily_rows.append({
+                    "date": current_date, "crop": crop, "stage": stage_name,
+                    "kc": kc, "eto_mm": eto, "demand_mm": round(demand_mm, 2),
+                    "sm_rootzone": sm_value, "sm_percentile": round(pctl, 1),
+                    "required_percentile": round(req_pctl, 1), "usable": usable
+                })
+
+    detail_df = pd.DataFrame(daily_rows)
+    if detail_df.empty:
+        return {"usable_moisture_days": 0, "total_days": 0, "detail": detail_df}
+
+    return {
+        "usable_moisture_days": int(detail_df["usable"].sum()),
+        "total_days": len(detail_df),
+        "by_crop": detail_df.groupby("crop")["usable"].agg(["sum", "count"]).to_dict("index"),
+        "detail": detail_df
+    }
