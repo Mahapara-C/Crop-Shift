@@ -1,0 +1,144 @@
+{
+  "api_version": "1.0",
+  "endpoint": "/api/v1/enso-lens",
+  "request": {
+    "district": "cumilla",
+    "crop": "mustard"
+  },
+  "generated_at": "2026-11-13T09:00:00+06:00",
+  "source_mode": "fixture",
+  "is_mock": true,
+  "mock_note": "Example shape only. Numbers are placeholders except where marked 'from test 26 Sep'. Do not present as results.",
+  "data": {
+    "status": "PENDING_CONFIRMATION",
+    "current_enso": {
+      "phase": "El Niño",
+      "advisory": "El Niño Advisory",
+      "nino34_latest": {
+        "value": 1.8,
+        "unit": "°C anomaly (Aug 2026)",
+        "src": [
+          "p7"
+        ]
+      }
+    },
+    "el_nino_years": {
+      "list": [
+        1982,
+        1987,
+        1991,
+        1997,
+        2002,
+        2004,
+        2009,
+        2015,
+        2023
+      ],
+      "src": [
+        "p7"
+      ]
+    },
+    "comparison": [
+      {
+        "metric": "rabi_rain",
+        "all_years": {
+          "value": 313,
+          "unit": "mm",
+          "src": [
+            "p1"
+          ]
+        },
+        "el_nino_years": {
+          "value": 315,
+          "unit": "mm",
+          "src": [
+            "p1",
+            "p7"
+          ]
+        },
+        "n_el_nino": {
+          "value": 9,
+          "unit": "years",
+          "src": [
+            "p7"
+          ]
+        },
+        "significant": false
+      },
+      {
+        "metric": "mustard_irrigation_need",
+        "all_years": {
+          "value": 193,
+          "unit": "mm",
+          "src": [
+            "p1",
+            "p3"
+          ]
+        },
+        "el_nino_years": {
+          "value": 188,
+          "unit": "mm",
+          "src": [
+            "p1",
+            "p3",
+            "p7"
+          ]
+        },
+        "n_el_nino": {
+          "value": 9,
+          "unit": "years",
+          "src": [
+            "p7"
+          ]
+        },
+        "significant": false
+      }
+    ],
+    "used_in_ranking": false
+  },
+  "narration": {
+    "en": "In past El Niño years, mustard irrigation need here was similar to other years.",
+    "bn": "আগের এল নিনো বছরগুলোতে এখানে সরিষার সেচ অন্য বছরের মতোই ছিল।",
+    "sms_en": "El Nino yrs: mustard water need similar to others.",
+    "sms_bn": "এল নিনো বছরে সরিষার পানি অন্য বছরের মতোই।",
+    "narrator": "template",
+    "provenance_check": "passed"
+  },
+  "provenance": [
+    {
+      "id": "p1",
+      "dataset": "NASA POWER Daily Point API (AG community)",
+      "url": "https://power.larc.nasa.gov/",
+      "agency": "NASA",
+      "period": "2001-01-01/2026-08-31",
+      "resolution": "~0.5° grid",
+      "note": "Area around the field, not the exact plot"
+    },
+    {
+      "id": "p3",
+      "dataset": "FAO-56 crop coefficients (Allen et al., 1998)",
+      "url": "https://www.fao.org/4/x0490e/x0490e00.htm",
+      "agency": "FAO",
+      "period": "",
+      "resolution": "",
+      "note": "Method reference"
+    },
+    {
+      "id": "p7",
+      "dataset": "NOAA CPC Oceanic Niño Index + ENSO Diagnostic Discussion",
+      "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml",
+      "agency": "NOAA",
+      "period": "1981-2026",
+      "resolution": "",
+      "note": ""
+    }
+  ],
+  "notices": [
+    {
+      "level": "caution",
+      "en": "Only a few El Niño years exist; treat as context, not a forecast.",
+      "bn": "এল নিনো বছর খুব কম; এটি প্রেক্ষাপট, পূর্বাভাস নয়।"
+    }
+  ],
+  "errors": []
+}

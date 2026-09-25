@@ -1,0 +1,92 @@
+{
+  "api_version": "1.0",
+  "endpoint": "/api/v1/districts",
+  "request": {},
+  "generated_at": "2026-11-13T09:00:00+06:00",
+  "source_mode": "fixture",
+  "is_mock": true,
+  "mock_note": "Example shape only. Numbers are placeholders except where marked 'from test 26 Sep'. Do not present as results.",
+  "data": {
+    "districts": [
+      {
+        "id": "cumilla",
+        "name": {
+          "en": "Cumilla",
+          "bn": "কুমিল্লা"
+        },
+        "lat": 23.4607,
+        "lon": 91.1809,
+        "power_cell_shared_with": [],
+        "covered": true
+      },
+      {
+        "id": "feni",
+        "name": {
+          "en": "Feni",
+          "bn": "ফেনী"
+        },
+        "lat": 23.0159,
+        "lon": 91.3976,
+        "power_cell_shared_with": [
+          "noakhali"
+        ],
+        "covered": true
+      },
+      {
+        "id": "noakhali",
+        "name": {
+          "en": "Noakhali",
+          "bn": "নোয়াখালী"
+        },
+        "lat": 22.8696,
+        "lon": 91.0995,
+        "power_cell_shared_with": [
+          "feni"
+        ],
+        "covered": true
+      },
+      {
+        "id": "brahmanbaria",
+        "name": {
+          "en": "Brahmanbaria",
+          "bn": "ব্রাহ্মণবাড়িয়া"
+        },
+        "lat": 23.9571,
+        "lon": 91.1119,
+        "power_cell_shared_with": [],
+        "covered": true
+      },
+      {
+        "id": "sylhet",
+        "name": {
+          "en": "Sylhet",
+          "bn": "সিলেট"
+        },
+        "lat": 24.8949,
+        "lon": 91.8687,
+        "power_cell_shared_with": [],
+        "covered": true
+      }
+    ]
+  },
+  "narration": null,
+  "provenance": [
+    {
+      "id": "p1",
+      "dataset": "NASA POWER Daily Point API (AG community)",
+      "url": "https://power.larc.nasa.gov/",
+      "agency": "NASA",
+      "period": "2001-01-01/2026-08-31",
+      "resolution": "~0.5° grid",
+      "note": "Area around the field, not the exact plot"
+    }
+  ],
+  "notices": [
+    {
+      "level": "caution",
+      "en": "Feni and Noakhali use the same NASA POWER weather cell.",
+      "bn": "ফেনী ও নোয়াখালী একই NASA POWER আবহাওয়া গ্রিড ব্যবহার করে।"
+    }
+  ],
+  "errors": []
+}

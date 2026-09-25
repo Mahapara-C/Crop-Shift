@@ -1,0 +1,177 @@
+{
+  "api_version": "1.0",
+  "endpoint": "/api/v1/field-twin",
+  "request": {
+    "district": "cumilla",
+    "year": 2019,
+    "crop": "mustard",
+    "sow_date": "2019-11-10"
+  },
+  "generated_at": "2026-11-13T09:00:00+06:00",
+  "source_mode": "fixture",
+  "is_mock": true,
+  "mock_note": "Example shape only. Numbers are placeholders except where marked 'from test 26 Sep'. Do not present as results.",
+  "data": {
+    "district": "cumilla",
+    "year": 2019,
+    "crop": "mustard",
+    "sow_date": "2019-11-10",
+    "is_forecast": false,
+    "label": {
+      "en": "What happened in 2019, a year similar to this one. An example, not a forecast.",
+      "bn": "২০১৯ সালে যা ঘটেছিল—এ বছরের মতো একটি বছর। উদাহরণ, পূর্বাভাস নয়।"
+    },
+    "weekly": {
+      "src": [
+        "p1",
+        "p2",
+        "p3"
+      ],
+      "units": {
+        "rain_mm": "mm/week",
+        "et0_mm": "mm/week",
+        "crop_demand_mm": "mm/week",
+        "stress_days": "days/week"
+      },
+      "rows": [
+        {
+          "week_start": "2019-11-10",
+          "rain_mm": 0,
+          "et0_mm": 21,
+          "crop_demand_mm": 19,
+          "stress_days": 0,
+          "stage": "initial"
+        },
+        {
+          "week_start": "2019-11-17",
+          "rain_mm": 5,
+          "et0_mm": 20,
+          "crop_demand_mm": 20,
+          "stress_days": 1,
+          "stage": "initial"
+        },
+        {
+          "week_start": "2019-11-24",
+          "rain_mm": 0,
+          "et0_mm": 18,
+          "crop_demand_mm": 17,
+          "stress_days": 3,
+          "stage": "initial"
+        },
+        {
+          "week_start": "2019-12-01",
+          "rain_mm": 0,
+          "et0_mm": 17,
+          "crop_demand_mm": 18,
+          "stress_days": 5,
+          "stage": "development"
+        },
+        {
+          "week_start": "2019-12-08",
+          "rain_mm": 12,
+          "et0_mm": 19,
+          "crop_demand_mm": 20,
+          "stress_days": 2,
+          "stage": "development"
+        },
+        {
+          "week_start": "2019-12-15",
+          "rain_mm": 0,
+          "et0_mm": 22,
+          "crop_demand_mm": 24,
+          "stress_days": 6,
+          "stage": "development"
+        },
+        {
+          "week_start": "2019-12-22",
+          "rain_mm": 0,
+          "et0_mm": 26,
+          "crop_demand_mm": 28,
+          "stress_days": 9,
+          "stage": "mid"
+        },
+        {
+          "week_start": "2019-12-29",
+          "rain_mm": 3,
+          "et0_mm": 30,
+          "crop_demand_mm": 33,
+          "stress_days": 11,
+          "stage": "mid"
+        }
+      ]
+    },
+    "totals": {
+      "irrigation_need": {
+        "value": 185,
+        "unit": "mm",
+        "src": [
+          "p1",
+          "p3"
+        ]
+      },
+      "stress_days": {
+        "value": 37,
+        "unit": "days",
+        "src": [
+          "p1",
+          "p3"
+        ]
+      }
+    },
+    "smap_check": {
+      "available": true,
+      "agreement_r": {
+        "value": 0.71,
+        "unit": "correlation (model vs SMAP)",
+        "src": [
+          "p2"
+        ]
+      }
+    }
+  },
+  "narration": {
+    "en": "In 2019, mustard sown on 10 Nov needed about 185 mm of irrigation.",
+    "bn": "২০১৯ সালে ১০ নভেম্বর বোনা সরিষায় প্রায় ১৮৫ মিমি সেচ লেগেছিল।",
+    "sms_en": "2019 replay: mustard needed ~185 mm irrigation.",
+    "sms_bn": "২০১৯: সরিষায় ~১৮৫ মিমি সেচ লেগেছিল।",
+    "narrator": "template",
+    "provenance_check": "passed"
+  },
+  "provenance": [
+    {
+      "id": "p1",
+      "dataset": "NASA POWER Daily Point API (AG community)",
+      "url": "https://power.larc.nasa.gov/",
+      "agency": "NASA",
+      "period": "2001-01-01/2026-08-31",
+      "resolution": "~0.5° grid",
+      "note": "Area around the field, not the exact plot"
+    },
+    {
+      "id": "p2",
+      "dataset": "NASA SMAP L4 root-zone soil moisture (SPL4SMGP), via AppEEARS",
+      "url": "https://appeears.earthdatacloud.nasa.gov/",
+      "agency": "NASA",
+      "period": "2015-03-31/2026-09-20",
+      "resolution": "~9 km",
+      "note": ""
+    },
+    {
+      "id": "p3",
+      "dataset": "FAO-56 crop coefficients (Allen et al., 1998)",
+      "url": "https://www.fao.org/4/x0490e/x0490e00.htm",
+      "agency": "FAO",
+      "period": "",
+      "resolution": "",
+      "note": "Method reference"
+    }
+  ],
+  "notices": [
+    {
+      "level": "info",
+      "en": "NASA data for the area around your field (weather ~0.5°, soil moisture ~9 km).",
+      "bn": "আপনার জমির আশেপাশের এলাকার NASA তথ্য (আবহাওয়া ~০.৫°, মাটির আর্দ্রতা ~৯ কিমি)।"
+    }
+  ],
+  "errors": []
+}

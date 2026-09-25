@@ -1,0 +1,155 @@
+{
+  "api_version": "1.0",
+  "endpoint": "/api/v1/post-flood",
+  "request": {
+    "district": "feni",
+    "flood_date": "2024-08-22",
+    "sand": "no"
+  },
+  "generated_at": "2026-11-13T09:00:00+06:00",
+  "source_mode": "fixture",
+  "is_mock": true,
+  "mock_note": "Example shape only. Numbers are placeholders except where marked 'from test 26 Sep'. Do not present as results.",
+  "data": {
+    "district": "feni",
+    "event": "2024-08 flood",
+    "water_on_ground": {
+      "first_seen": "2024-08-21",
+      "last_seen_flooded": "2024-09-04",
+      "days_observed": {
+        "value": 14,
+        "unit": "days",
+        "src": [
+          "p4"
+        ]
+      },
+      "scenes_used": {
+        "value": 6,
+        "unit": "scenes",
+        "src": [
+          "p4"
+        ]
+      },
+      "resolution_note": {
+        "en": "30 m water maps from radar (sees through clouds).",
+        "bn": "৩০ মিটার রাডার পানি-মানচিত্র (মেঘ ভেদ করে দেখে)।"
+      }
+    },
+    "soil_back_to_normal": {
+      "date": "2024-10-10",
+      "days_after_peak": {
+        "value": 49,
+        "unit": "days",
+        "src": [
+          "p2"
+        ]
+      },
+      "rule": {
+        "en": "Root-zone moisture at or below the 80th percentile of other years (±15 days) for 7 days.",
+        "bn": "৭ দিন ধরে মাটির আর্দ্রতা অন্য বছরের ৮০তম শতাংশের নিচে।"
+      },
+      "from_test_26_sep": true
+    },
+    "earliest_sowing_date": {
+      "date": "2024-10-10",
+      "src": [
+        "p2"
+      ]
+    },
+    "still_possible": [
+      {
+        "crop": "mustard",
+        "crop_name": {
+          "en": "Mustard",
+          "bn": "সরিষা"
+        },
+        "window_open_until": "2024-11-20",
+        "src": [
+          "p5"
+        ]
+      },
+      {
+        "crop": "lentil",
+        "crop_name": {
+          "en": "Lentil",
+          "bn": "মসুর"
+        },
+        "window_open_until": "2024-11-15",
+        "src": [
+          "p5"
+        ]
+      }
+    ],
+    "no_longer_possible": [
+      {
+        "crop": "aman_rice",
+        "crop_name": {
+          "en": "Aman rice replanting",
+          "bn": "আমন পুনরায় রোপণ"
+        },
+        "reason": {
+          "en": "Transplanting window closed before soil recovered.",
+          "bn": "মাটি ঠিক হওয়ার আগেই রোপণের সময় শেষ।"
+        },
+        "src": [
+          "p5"
+        ]
+      }
+    ],
+    "soil_test_advice": {
+      "en": "Satellites cannot measure soil pH or nutrients. Get a soil test at SRDI or your Upazila Agriculture Office.",
+      "bn": "স্যাটেলাইট মাটির pH বা পুষ্টি মাপতে পারে না। SRDI বা উপজেলা কৃষি অফিসে মাটি পরীক্ষা করান।"
+    },
+    "sand_answer": "no"
+  },
+  "narration": {
+    "en": "After the Aug 2024 flood, soil here took about 49 days to return to normal.",
+    "bn": "আগস্ট ২০২৪ বন্যার পর এখানে মাটি স্বাভাবিক হতে প্রায় ৪৯ দিন লেগেছিল।",
+    "sms_en": "After 2024 flood: soil normal after ~49 days.",
+    "sms_bn": "২০২৪ বন্যার পর মাটি ~৪৯ দিনে স্বাভাবিক।",
+    "narrator": "template",
+    "provenance_check": "passed"
+  },
+  "provenance": [
+    {
+      "id": "p2",
+      "dataset": "NASA SMAP L4 root-zone soil moisture (SPL4SMGP), via AppEEARS",
+      "url": "https://appeears.earthdatacloud.nasa.gov/",
+      "agency": "NASA",
+      "period": "2015-03-31/2026-09-20",
+      "resolution": "~9 km",
+      "note": ""
+    },
+    {
+      "id": "p4",
+      "dataset": "NASA OPERA DSWx-S1 surface water (from Sentinel-1)",
+      "url": "https://podaac.jpl.nasa.gov/dataset/OPERA_L3_DSWX-S1_V1",
+      "agency": "NASA JPL (Sentinel-1: ESA)",
+      "period": "2024-08-21/…",
+      "resolution": "30 m",
+      "note": "No scenes before 21 Aug 2024 over Feni/Cumilla"
+    },
+    {
+      "id": "p5",
+      "dataset": "Crop calendar & hazard thresholds (data/reference/crop_calendar.csv)",
+      "url": "https://github.com/Taaanha/Crop-Shift/tree/main/data/reference",
+      "agency": "BARI/BRRI/FAO (see CSV rows)",
+      "period": "",
+      "resolution": "",
+      "note": "Each threshold row carries its own source"
+    }
+  ],
+  "notices": [
+    {
+      "level": "info",
+      "en": "NASA data for the area around your field (weather ~0.5°, soil moisture ~9 km).",
+      "bn": "আপনার জমির আশেপাশের এলাকার NASA তথ্য (আবহাওয়া ~০.৫°, মাটির আর্দ্রতা ~৯ কিমি)।"
+    },
+    {
+      "level": "caution",
+      "en": "Water-map archive starts 21 Aug 2024 for this area.",
+      "bn": "এই এলাকায় পানি-মানচিত্র ২১ আগস্ট ২০২৪ থেকে শুরু।"
+    }
+  ],
+  "errors": []
+}

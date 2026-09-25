@@ -1,0 +1,68 @@
+{
+  "api_version": "1.0",
+  "endpoint": "/api/v1/ask",
+  "request": {
+    "question": "আমার জমিতে এবার কী লাগাবো?",
+    "district": "cumilla",
+    "lang": "bn"
+  },
+  "generated_at": "2026-11-13T09:00:00+06:00",
+  "source_mode": "fixture",
+  "is_mock": true,
+  "mock_note": "Example shape only. Numbers are placeholders except where marked 'from test 26 Sep'. Do not present as results.",
+  "data": {
+    "answer_type": "advisory",
+    "tools_called": [
+      {
+        "name": "risk_calendar",
+        "args": {
+          "district": "cumilla",
+          "crop": "mustard"
+        }
+      },
+      {
+        "name": "advisory",
+        "args": {
+          "district": "cumilla",
+          "irrigation": "no"
+        }
+      }
+    ],
+    "steps_used": 2,
+    "step_cap": 6,
+    "guard": {
+      "numbers_checked": 3,
+      "numbers_blocked": 0
+    }
+  },
+  "narration": {
+    "en": "Mustard sown 5-20 Nov had problems in 3 of 25 years here.",
+    "bn": "৫-২০ নভেম্বর সরিষা বুনলে এখানে ২৫ বছরের ৩ বছরে সমস্যা হয়েছে।",
+    "sms_en": "Mustard 5-20 Nov: problems in 3 of 25 yrs.",
+    "sms_bn": "সরিষা ৫-২০ নভে: ২৫ বছরে ৩ বছর সমস্যা।",
+    "narrator": "template",
+    "provenance_check": "passed"
+  },
+  "provenance": [
+    {
+      "id": "p1",
+      "dataset": "NASA POWER Daily Point API (AG community)",
+      "url": "https://power.larc.nasa.gov/",
+      "agency": "NASA",
+      "period": "2001-01-01/2026-08-31",
+      "resolution": "~0.5° grid",
+      "note": "Area around the field, not the exact plot"
+    },
+    {
+      "id": "p5",
+      "dataset": "Crop calendar & hazard thresholds (data/reference/crop_calendar.csv)",
+      "url": "https://github.com/Taaanha/Crop-Shift/tree/main/data/reference",
+      "agency": "BARI/BRRI/FAO (see CSV rows)",
+      "period": "",
+      "resolution": "",
+      "note": "Each threshold row carries its own source"
+    }
+  ],
+  "notices": [],
+  "errors": []
+}
