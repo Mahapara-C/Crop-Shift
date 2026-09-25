@@ -1,0 +1,76 @@
+{
+  "api_version": "1.0",
+  "endpoint": "/api/v1/warnings",
+  "request": {
+    "district": "cumilla"
+  },
+  "generated_at": "2026-11-13T09:00:00+06:00",
+  "source_mode": "fixture",
+  "is_mock": true,
+  "mock_note": "Example shape only. Numbers are placeholders except where marked 'from test 26 Sep'. Do not present as results.",
+  "data": {
+    "district": "cumilla",
+    "valid_from": "2026-11-13",
+    "valid_to": "2026-11-20",
+    "warnings": [
+      {
+        "type": "heavy_rain",
+        "date": "2026-11-15",
+        "forecast": {
+          "value": 68,
+          "unit": "mm/24h",
+          "src": [
+            "p6"
+          ]
+        },
+        "threshold": {
+          "value": 50,
+          "unit": "mm/24h",
+          "src": [
+            "p5"
+          ]
+        },
+        "action": {
+          "en": "Keep drains open; delay sowing by 2-3 days.",
+          "bn": "নালা খোলা রাখুন; বোনা ২-৩ দিন পিছিয়ে দিন।"
+        }
+      }
+    ]
+  },
+  "narration": {
+    "en": "Heavy rain (68 mm) forecast on 15 Nov: delay sowing 2-3 days.",
+    "bn": "১৫ নভেম্বর ভারী বৃষ্টির (৬৮ মিমি) পূর্বাভাস: বোনা ২-৩ দিন পিছিয়ে দিন।",
+    "sms_en": "Heavy rain 15 Nov (68mm): delay sowing 2-3 days.",
+    "sms_bn": "১৫ নভে ভারী বৃষ্টি (৬৮মিমি): বোনা ২-৩ দিন পেছান।",
+    "narrator": "template",
+    "provenance_check": "passed"
+  },
+  "provenance": [
+    {
+      "id": "p6",
+      "dataset": "Open-Meteo Forecast API",
+      "url": "https://open-meteo.com/",
+      "agency": "Open-Meteo (non-NASA partner data)",
+      "period": "next 7 days",
+      "resolution": "~11 km",
+      "note": "Non-commercial use, attribution required"
+    },
+    {
+      "id": "p5",
+      "dataset": "Crop calendar & hazard thresholds (data/reference/crop_calendar.csv)",
+      "url": "https://github.com/Taaanha/Crop-Shift/tree/main/data/reference",
+      "agency": "BARI/BRRI/FAO (see CSV rows)",
+      "period": "",
+      "resolution": "",
+      "note": "Each threshold row carries its own source"
+    }
+  ],
+  "notices": [
+    {
+      "level": "info",
+      "en": "Forecast data is from Open-Meteo, not NASA.",
+      "bn": "পূর্বাভাসের তথ্য Open-Meteo থেকে, NASA নয়।"
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,22 @@
+{
+  "api_version": "1.0",
+  "endpoint": "/api/v1/advisory",
+  "request": {
+    "district": "dhaka"
+  },
+  "generated_at": "2026-11-13T09:00:00+06:00",
+  "source_mode": "fixture",
+  "is_mock": true,
+  "mock_note": "Example error shape.",
+  "data": null,
+  "narration": null,
+  "provenance": [],
+  "notices": [],
+  "errors": [
+    {
+      "code": "DISTRICT_NOT_COVERED",
+      "en": "CropShift covers Cumilla, Feni, Brahmanbaria, Noakhali and Sylhet for now.",
+      "bn": "CropShift এখন কুমিল্লা, ফেনী, ব্রাহ্মণবাড়িয়া, নোয়াখালী ও সিলেট অঞ্চলে কাজ করে।"
+    }
+  ]
+}

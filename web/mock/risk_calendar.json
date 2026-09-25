@@ -1,0 +1,140 @@
+{
+  "api_version": "1.0",
+  "endpoint": "/api/v1/risk-calendar",
+  "request": {
+    "district": "cumilla",
+    "crop": "wheat"
+  },
+  "generated_at": "2026-11-13T09:00:00+06:00",
+  "source_mode": "fixture",
+  "is_mock": true,
+  "mock_note": "Example shape only. Numbers are placeholders except where marked 'from test 26 Sep'. Do not present as results.",
+  "data": {
+    "district": "cumilla",
+    "crop": "wheat",
+    "years_used": {
+      "value": 25,
+      "unit": "years",
+      "src": [
+        "p1"
+      ]
+    },
+    "hazards": [
+      {
+        "id": "terminal_heat",
+        "label": {
+          "en": "Heat during grain filling",
+          "bn": "দানা ভরার সময় গরম"
+        },
+        "threshold": {
+          "value": 30,
+          "unit": "°C daily max, ≥3 days",
+          "src": [
+            "p5"
+          ]
+        }
+      },
+      {
+        "id": "dry_spell",
+        "label": {
+          "en": "Dry spell at a water-sensitive stage",
+          "bn": "পানির প্রয়োজনের সময় খরা"
+        },
+        "threshold": {
+          "value": 14,
+          "unit": "dry days",
+          "src": [
+            "p5"
+          ]
+        }
+      }
+    ],
+    "sowing_dates": [
+      "2026-11-01",
+      "2026-11-10",
+      "2026-11-20",
+      "2026-11-30",
+      "2026-12-10"
+    ],
+    "grid": {
+      "src": [
+        "p1",
+        "p5"
+      ],
+      "unit": "years with the hazard (of years_used)",
+      "rows": [
+        {
+          "hazard": "terminal_heat",
+          "years_hit": [
+            2,
+            3,
+            5,
+            9,
+            14
+          ]
+        },
+        {
+          "hazard": "dry_spell",
+          "years_hit": [
+            4,
+            4,
+            3,
+            3,
+            2
+          ]
+        }
+      ],
+      "any_problem_years": [
+        5,
+        6,
+        7,
+        11,
+        15
+      ]
+    },
+    "best_window": {
+      "start": "2026-11-01",
+      "end": "2026-11-20",
+      "src": [
+        "p1",
+        "p5"
+      ]
+    }
+  },
+  "narration": {
+    "en": "Wheat sown by 20 Nov had problems in 7 of 25 years or fewer.",
+    "bn": "২০ নভেম্বরের মধ্যে গম বুনলে ২৫ বছরে সর্বোচ্চ ৭ বছর সমস্যা।",
+    "sms_en": "Wheat: sow by 20 Nov (max 7 of 25 problem yrs).",
+    "sms_bn": "গম: ২০ নভের মধ্যে বুনুন (২৫ বছরে ৭ বছর সমস্যা)।",
+    "narrator": "template",
+    "provenance_check": "passed"
+  },
+  "provenance": [
+    {
+      "id": "p1",
+      "dataset": "NASA POWER Daily Point API (AG community)",
+      "url": "https://power.larc.nasa.gov/",
+      "agency": "NASA",
+      "period": "2001-01-01/2026-08-31",
+      "resolution": "~0.5° grid",
+      "note": "Area around the field, not the exact plot"
+    },
+    {
+      "id": "p5",
+      "dataset": "Crop calendar & hazard thresholds (data/reference/crop_calendar.csv)",
+      "url": "https://github.com/Taaanha/Crop-Shift/tree/main/data/reference",
+      "agency": "BARI/BRRI/FAO (see CSV rows)",
+      "period": "",
+      "resolution": "",
+      "note": "Each threshold row carries its own source"
+    }
+  ],
+  "notices": [
+    {
+      "level": "info",
+      "en": "NASA data for the area around your field (weather ~0.5°, soil moisture ~9 km).",
+      "bn": "আপনার জমির আশেপাশের এলাকার NASA তথ্য (আবহাওয়া ~০.৫°, মাটির আর্দ্রতা ~৯ কিমি)।"
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,288 @@
+{
+  "api_version": "1.0",
+  "endpoint": "/api/v1/advisory",
+  "request": {
+    "district": "cumilla",
+    "decision_date": "2026-11-13",
+    "irrigation": "no",
+    "lang": "bn"
+  },
+  "generated_at": "2026-11-13T09:00:00+06:00",
+  "source_mode": "fixture",
+  "is_mock": true,
+  "mock_note": "Example shape only. Numbers are placeholders except where marked 'from test 26 Sep'. Do not present as results.",
+  "data": {
+    "district": "cumilla",
+    "decision_date": "2026-11-13",
+    "years_used": {
+      "value": 25,
+      "unit": "years",
+      "src": [
+        "p1"
+      ]
+    },
+    "method": {
+      "en": "Each option was grown on computer through every year of NASA data (2001-2025).",
+      "bn": "২০০১-২০২৫ সালের প্রতিটি বছরের NASA তথ্যে প্রতিটি ফসল হিসাব করে দেখা হয়েছে।"
+    },
+    "options": [
+      {
+        "rank": 1,
+        "crop": "mustard",
+        "crop_name": {
+          "en": "Mustard",
+          "bn": "সরিষা"
+        },
+        "feasible": true,
+        "sowing_window": {
+          "start": "2026-11-05",
+          "end": "2026-11-20",
+          "src": [
+            "p1",
+            "p5"
+          ]
+        },
+        "problem_years": {
+          "value": 3,
+          "unit": "of 25 years",
+          "src": [
+            "p1",
+            "p5"
+          ]
+        },
+        "irrigation_need_avg": {
+          "value": 190,
+          "unit": "mm",
+          "src": [
+            "p1",
+            "p3"
+          ]
+        },
+        "irrigation_need_worst20": {
+          "value": 235,
+          "unit": "mm",
+          "src": [
+            "p1",
+            "p3"
+          ]
+        },
+        "water_stress_days_avg": {
+          "value": 12,
+          "unit": "days",
+          "src": [
+            "p1",
+            "p3"
+          ]
+        },
+        "water_stress_days_worst20": {
+          "value": 24,
+          "unit": "days",
+          "src": [
+            "p1",
+            "p3"
+          ]
+        },
+        "main_risks": [
+          {
+            "hazard": "dry_spell",
+            "label": {
+              "en": "Dry spell during flowering",
+              "bn": "ফুল আসার সময় খরা"
+            },
+            "years_hit": {
+              "value": 3,
+              "unit": "of 25 years",
+              "src": [
+                "p1",
+                "p5"
+              ]
+            }
+          }
+        ],
+        "why": {
+          "en": "Fewest problem years in both average and bad years.",
+          "bn": "গড় ও খারাপ—দুই ধরনের বছরেই সবচেয়ে কম সমস্যা।"
+        }
+      },
+      {
+        "rank": 2,
+        "crop": "lentil",
+        "crop_name": {
+          "en": "Lentil",
+          "bn": "মসুর"
+        },
+        "feasible": true,
+        "sowing_window": {
+          "start": "2026-11-01",
+          "end": "2026-11-15",
+          "src": [
+            "p1",
+            "p5"
+          ]
+        },
+        "problem_years": {
+          "value": 5,
+          "unit": "of 25 years",
+          "src": [
+            "p1",
+            "p5"
+          ]
+        },
+        "irrigation_need_avg": {
+          "value": 160,
+          "unit": "mm",
+          "src": [
+            "p1",
+            "p3"
+          ]
+        },
+        "irrigation_need_worst20": {
+          "value": 210,
+          "unit": "mm",
+          "src": [
+            "p1",
+            "p3"
+          ]
+        },
+        "water_stress_days_avg": {
+          "value": 14,
+          "unit": "days",
+          "src": [
+            "p1",
+            "p3"
+          ]
+        },
+        "water_stress_days_worst20": {
+          "value": 27,
+          "unit": "days",
+          "src": [
+            "p1",
+            "p3"
+          ]
+        },
+        "main_risks": [
+          {
+            "hazard": "terminal_heat",
+            "label": {
+              "en": "Heat at pod filling (March)",
+              "bn": "মার্চে দানা পুষ্ট হওয়ার সময় গরম"
+            },
+            "years_hit": {
+              "value": 4,
+              "unit": "of 25 years",
+              "src": [
+                "p1",
+                "p5"
+              ]
+            }
+          }
+        ],
+        "why": {
+          "en": "Low water need; heat risk if sown late.",
+          "bn": "পানি কম লাগে; দেরিতে বুনলে গরমের ঝুঁকি।"
+        }
+      }
+    ],
+    "filtered_out": [
+      {
+        "crop": "boro_rice",
+        "crop_name": {
+          "en": "Boro rice",
+          "bn": "বোরো ধান"
+        },
+        "reason_code": "NO_IRRIGATION",
+        "reason": {
+          "en": "Needs irrigation, and you said none is available.",
+          "bn": "সেচ লাগে, কিন্তু আপনি জানিয়েছেন সেচের ব্যবস্থা নেই।"
+        }
+      }
+    ],
+    "field_twin_year": {
+      "year": 2019,
+      "distance": {
+        "value": 0.84,
+        "unit": "z-units",
+        "src": [
+          "p1"
+        ]
+      },
+      "label": {
+        "en": "A year like this one — tap to replay week by week. This is an example, not a forecast.",
+        "bn": "এ বছরের মতো একটি বছর—সপ্তাহে সপ্তাহে দেখতে চাপুন। এটি উদাহরণ, পূর্বাভাস নয়।"
+      }
+    },
+    "close_match": true,
+    "self_test": {
+      "statement": {
+        "en": "Tested on 25 past years: one similar year alone is not a reliable forecast, so ranking uses all years.",
+        "bn": "২৫ বছরে পরীক্ষা করা হয়েছে: শুধু একটি মিল থাকা বছর নির্ভরযোগ্য পূর্বাভাস নয়, তাই সব বছর দিয়ে র‍্যাঙ্কিং।"
+      },
+      "src": [
+        "p8"
+      ]
+    }
+  },
+  "narration": {
+    "en": "Mustard sown 5-20 Nov had problems in 3 of 25 years here.",
+    "bn": "৫-২০ নভেম্বর সরিষা বুনলে এখানে ২৫ বছরের ৩ বছরে সমস্যা হয়েছে।",
+    "sms_en": "Mustard 5-20 Nov: problems in 3 of 25 yrs (NASA data).",
+    "sms_bn": "সরিষা ৫-২০ নভে: ২৫ বছরে ৩ বছর সমস্যা (NASA)।",
+    "narrator": "template",
+    "provenance_check": "passed"
+  },
+  "provenance": [
+    {
+      "id": "p1",
+      "dataset": "NASA POWER Daily Point API (AG community)",
+      "url": "https://power.larc.nasa.gov/",
+      "agency": "NASA",
+      "period": "2001-01-01/2026-08-31",
+      "resolution": "~0.5° grid",
+      "note": "Area around the field, not the exact plot"
+    },
+    {
+      "id": "p2",
+      "dataset": "NASA SMAP L4 root-zone soil moisture (SPL4SMGP), via AppEEARS",
+      "url": "https://appeears.earthdatacloud.nasa.gov/",
+      "agency": "NASA",
+      "period": "2015-03-31/2026-09-20",
+      "resolution": "~9 km",
+      "note": ""
+    },
+    {
+      "id": "p3",
+      "dataset": "FAO-56 crop coefficients (Allen et al., 1998)",
+      "url": "https://www.fao.org/4/x0490e/x0490e00.htm",
+      "agency": "FAO",
+      "period": "",
+      "resolution": "",
+      "note": "Method reference"
+    },
+    {
+      "id": "p5",
+      "dataset": "Crop calendar & hazard thresholds (data/reference/crop_calendar.csv)",
+      "url": "https://github.com/Taaanha/Crop-Shift/tree/main/data/reference",
+      "agency": "BARI/BRRI/FAO (see CSV rows)",
+      "period": "",
+      "resolution": "",
+      "note": "Each threshold row carries its own source"
+    },
+    {
+      "id": "p8",
+      "dataset": "CropShift hindcast results (docs/results/hindcast.md)",
+      "url": "https://github.com/Taaanha/Crop-Shift/tree/main/docs/results",
+      "agency": "Team Regolith analysis of NASA POWER",
+      "period": "2001-2025",
+      "resolution": "",
+      "note": ""
+    }
+  ],
+  "notices": [
+    {
+      "level": "info",
+      "en": "NASA data for the area around your field (weather ~0.5°, soil moisture ~9 km).",
+      "bn": "আপনার জমির আশেপাশের এলাকার NASA তথ্য (আবহাওয়া ~০.৫°, মাটির আর্দ্রতা ~৯ কিমি)।"
+    }
+  ],
+  "errors": []
+}
