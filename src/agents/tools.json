@@ -1,0 +1,92 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "nearest_analog_year",
+      "description": "Find the historical year (2001-2025) whose climate signature most closely matches the current season, based on monsoon onset timing, onset rainfall amount, dry spell length, and mean temperature. Uses NASA POWER daily climate data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "district": {
+            "type": "string",
+            "enum": ["cumilla", "noakhali", "feni", "brahmanbaria", "sylhet"],
+            "description": "The district to analyze."
+          },
+          "current_season": {
+            "type": "object",
+            "description": "The current season's observed values for the four matching features.",
+            "properties": {
+              "onset_doy": {"type": "integer", "description": "Day of year the monsoon onset was observed."},
+              "onset_amount_mm": {"type": "number", "description": "Rainfall (mm) in the onset week."},
+              "dry_spell_days": {"type": "integer", "description": "Longest dry spell so far this year, in days."},
+              "mean_t2m_c": {"type": "number", "description": "Mean temperature so far this year, in Celsius."}
+            },
+            "required": ["onset_doy", "onset_amount_mm", "dry_spell_days", "mean_t2m_c"]
+          }
+        },
+        "required": ["district", "current_season"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "backtest_rotation",
+      "description": "Replay a candidate crop rotation plan against real historical NASA SMAP soil moisture and POWER climate data from a specific analog year, and count how many days had adequate soil moisture for that day's crop water demand (using FAO-56 crop coefficients).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "district": {
+            "type": "string",
+            "enum": ["cumilla", "noakhali", "feni", "brahmanbaria", "sylhet"]
+          },
+          "analog_year": {
+            "type": "integer",
+            "description": "The historical year to replay, from nearest_analog_year()'s result."
+          },
+          "rotation_plan": {
+            "type": "array",
+            "description": "The sequence of crops in the candidate rotation.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "crop": {
+                  "type": "string",
+                  "enum": ["rice", "mung_bean", "lentil", "chickpea", "wheat", "maize", "mustard", "potato"]
+                },
+                "start_date": {"type": "string", "description": "YYYY-MM-DD"}
+              },
+              "required": ["crop", "start_date"]
+            }
+          }
+        },
+        "required": ["district", "analog_year", "rotation_plan"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "cite_check",
+      "description": "Return true only if every numeric claim in a proposed answer maps to a dataset id and source URL. Must be called before any narrated answer containing numbers is shown to the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {"type": "string"},
+                "source_url": {"type": "string"},
+                "dataset_id": {"type": "string"}
+              },
+              "required": ["text", "source_url", "dataset_id"]
+            }
+          }
+        },
+        "required": ["claims"]
+      }
+    }
+  }
+]
