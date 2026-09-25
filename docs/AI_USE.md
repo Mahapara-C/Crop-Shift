@@ -39,3 +39,18 @@ blocks any narrated number that didn't come from a tool result.
 All NASA/scientific data used is from NASA POWER, NASA SMAP (via AppEEARS),
 and FAO-56 (Allen et al., 1998) reference values — see README and inline
 docstrings in `src/compute/agroclimate.py` for exact citations per number.
+## Review log
+
+- **External review by a second Claude session** of the agent-layer code
+  (tools.json, tool_functions.py, backtest_rotation). It found: cite_check
+  exposed as a model-callable tool (moved inside guard(), so the check
+  can't be skipped); analog_year being ignored by backtest_rotation(); a
+  missing result key on empty results; misspelled crops silently dropped;
+  and empty 0-of-0 results for pre-2015 analog years. Each fix was checked
+  before being applied, and one proposed fix was changed (it would have
+  broken rotations that cross into the next year).
+- **Real-data checks with Claude** then found further issues: inconsistent
+  column names across district files, a stale Sylhet file, and the
+  whole-year soil-moisture ranking penalizing every dry-season crop. That
+  ranking was replaced with a seasonal percentile, validated against
+  independent POWER rainfall (scripts/check_smap_years.py).

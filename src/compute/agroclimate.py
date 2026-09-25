@@ -93,7 +93,7 @@ def build_feature_table(df, years=range(2001, 2026)):
     Parameters
     ----------
     df : pd.DataFrame
-        Daily data indexed by date, with 'rainfall_mm' and 'temp_c' columns
+        Daily data indexed by date, with 'rainfall_mm' and 'temp_mean_c' columns
         (as produced by the NASA POWER pull).
     years : iterable of int
         Which years to include, if present in df.
@@ -115,15 +115,15 @@ def build_feature_table(df, years=range(2001, 2026)):
             "onset_doy": onset["onset_doy"],
             "onset_amount_mm": onset["onset_amount_mm"],
             "dry_spell_days": dry_spell_length(year_data["rainfall_mm"]),
-            "mean_t2m_c": year_data["temp_c"].mean()
+            "mean_t2m_c": year_data["temp_mean_c"].mean()
         })
     return pd.DataFrame(rows).set_index("year")
 
 
 FEATURES = ["onset_doy", "onset_amount_mm", "dry_spell_days", "mean_t2m_c"]
 
-
-def nearest_analog_year(current_season, feature_table, features=FEATURES):
+def nearest_analog_year(current_season, feature_table, features=FEATURES,
+                        candidate_years=None):
     """
     Finds the historical year whose climate signature is closest to
     current_season, using z-normalized Euclidean distance. Matches ONLY
@@ -157,6 +157,8 @@ def nearest_analog_year(current_season, feature_table, features=FEATURES):
 
     best_year, best_dist, best_contrib = None, np.inf, None
     for year, row in normalized_table.iterrows():
+        if candidate_years is not None and year not in candidate_years:
+            continue  # scaled with ALL years above, but only these may win
         vec = row[features].values.astype(float)
         diffs = np.abs(cur_vec - vec)
         dist = float(np.linalg.norm(diffs))
@@ -169,6 +171,8 @@ def nearest_analog_year(current_season, feature_table, features=FEATURES):
         "distance": round(best_dist, 3),
         "feature_contributions": {k: round(v, 3) for k, v in best_contrib.items()}
     }
+
+
 def eto_penman_monteith(row, day_of_year, latitude_deg, elevation_m):
     """
     FAO-56 Penman-Monteith reference evapotranspiration (Equation 6),
@@ -179,22 +183,24 @@ def eto_penman_monteith(row, day_of_year, latitude_deg, elevation_m):
     Bangladesh climatology.
 
     row : a row with temp_max_c, temp_min_c, temp_mean_c, rh_pct,
-          wind_speed_ms, solar_rad_kwh_m2.
-          NOTE: despite its name, solar_rad_kwh_m2 is in MJ/m2/day when
-          pulled under POWER's "AG" (agroclimatology) community — no
-          unit conversion is applied here. (RE-community pulls would be
-          in kWh/m2/day and WOULD need *3.6 conversion — the two
-          communities differ in units for this same parameter, which
-          is the bug this function's validation caught.)
+          wind_speed_ms, solar_rad_mj_m2.
+          solar_rad_mj_m2 is POWER's ALLSKY_SFC_SW_DWN pulled under the
+          "AG" (agroclimatology) community, which is already in MJ/m2/day,
+          so no unit conversion is applied. (The "RE" community returns the
+          same parameter in kWh/m2/day and would need *3.6 — mixing the two
+          up was a real bug caught during validation.)
     day_of_year : 1-365/366, for extraterrestrial radiation.
     latitude_deg, elevation_m : site location, varies per district.
 
     Returns ET0 in mm/day.
+    candidate_years (optional): restricts which years may be picked as the
+    match, while feature scaling still uses every year in feature_table, so
+    distances stay comparable with an unrestricted search.
     """
     T_max, T_min, T_mean = row["temp_max_c"], row["temp_min_c"], row["temp_mean_c"]
     RH = row["rh_pct"]
     u2 = row["wind_speed_ms"]
-    Rs = row["solar_rad_kwh_m2"]  # already MJ/m2/day under AG community
+    Rs = row["solar_rad_mj_m2"]  # already MJ/m2/day under AG community
 
     P = 101.3 * ((293 - 0.0065 * elevation_m) / 293) ** 5.26
     gamma = 0.000665 * P
@@ -226,58 +232,94 @@ def eto_penman_monteith(row, day_of_year, latitude_deg, elevation_m):
     return round(float(numerator / denominator), 2)
 
 def backtest_rotation(rotation_plan, analog_year, power_df, smap_series, kc_table,
-                       latitude_deg, elevation_m,
-                       kc_low=0.3, kc_high=1.2, pctl_low=20, pctl_high=60):
+                      latitude_deg, elevation_m,
+                      kc_low=0.3, kc_high=1.2, pctl_low=20, pctl_high=60,
+                      window_days=15):
     """
     Replays a candidate crop rotation against the REAL observed SMAP and
     POWER data from analog_year, and counts "usable soil moisture days" —
     days where soil moisture was adequate for that day's crop water demand.
 
-    SIMPLIFIED METHOD (documented placeholder — see NOTE below):
-    Since field capacity/wilting point data isn't yet available per
-    district, adequacy is judged by ranking each day's SMAP root-zone
-    moisture against that SAME location's own historical percentile
-    distribution (computed from its full SMAP record), rather than an
-    absolute soil-physics threshold. The required percentile scales
-    linearly with that day's crop coefficient (Kc): a low-Kc day
-    (e.g. early growth, kc_low=0.3) only needs the 20th percentile
-    (pctl_low) or better; a peak-Kc day (kc_high=1.2, mid-season) needs
-    the 60th percentile (pctl_high) or better. This avoids needing soil
-    survey data we don't have yet, at the cost of being a proxy rather
-    than a true water-balance calculation.
+    ANALOG YEAR HANDLING: analog_year decides which real calendar year is
+    replayed. Every entry in rotation_plan is shifted by the SAME number of
+    years (analog_year minus the first entry's year), so a plan that
+    crosses into the next year (e.g. rice from July, then potato the
+    following January) keeps its own order and gaps.
 
-    NOTE: This is the pre-October-1 simplified version. A fuller
-    FAO-56 Chapter 8 style day-by-day root-zone depletion model
-    (using actual field capacity / wilting point / management allowable
-    depletion) is planned as a post-Oct-1 upgrade once ISRIC SoilGrids
-    data is incorporated — see prompt-2.md's data inventory.
+    SIMPLIFIED METHOD — SEASONAL PERCENTILE (documented placeholder):
+    Each day's SMAP root-zone moisture is ranked against the same
+    location's moisture at the SAME TIME OF YEAR (within +/- window_days
+    calendar days) in every OTHER year of the SMAP record. This answers
+    "how wet was this day compared with the same time of year in other
+    years". An earlier version ranked against the whole-year record, which
+    made every dry-season day rank near the bottom regardless of the year,
+    so winter crops (mustard, lentil, wheat, potato) scored near zero in
+    every year. This was found on real Cumilla data, where Jan-Mar 2026
+    mustard averaged only the 6th-20th whole-year percentile.
 
-    Parameters
-    ----------
-    rotation_plan : list of dicts, e.g.
-        [{"crop": "rice", "start_date": "2019-05-15"},
-         {"crop": "mung_bean", "start_date": "2019-09-20"}]
-    analog_year : int — the year whose real data we're replaying.
-    power_df : DataFrame — that district's full POWER data (needs
-               temp_max_c, temp_min_c, temp_mean_c, rh_pct, wind_speed_ms,
-               solar_rad_kwh_m2), indexed by date.
-    smap_series : Series of daily sm_rootzone values, indexed by date,
-                  for that district's FULL history (used both to look up
-                  the analog year's values AND to compute the historical
-                  percentile distribution).
-    kc_table : DataFrame from the kc_table.csv (crop, stage, length_days, kc).
-    latitude_deg, elevation_m : for ET0 calculation.
+    The required percentile scales linearly with that day's crop
+    coefficient (Kc): a low-Kc day (kc_low=0.3) needs the 20th percentile
+    (pctl_low) or better; a peak-Kc day (kc_high=1.2) needs the 60th
+    percentile (pctl_high) or better.
+
+    LIMITATION: this measures moisture relative to normal for the season,
+    not absolute water sufficiency. A fuller FAO-56 Chapter 8 root-zone
+    water balance (field capacity, wilting point, management allowable
+    depletion from ISRIC SoilGrids) is planned as a post-Oct-1 upgrade.
+
+    CALLER RESPONSIBILITY: SMAP starts 2015-03-31. Days with no SMAP value,
+    no POWER value, or no other-year SMAP reference for that time of year
+    are skipped and not counted as evaluated. The agent's tool layer
+    backtests only years from 2015 onward (see src/agents/tool_functions.py).
 
     Returns
     -------
-    dict with per-crop day counts, usable_moisture_days, and the daily
-    detail table (for the provenance drawer / debugging).
-    """
-    smap_sorted = smap_series.dropna().sort_values().values
+    dict with analog_year, planned_days (days in the plan), total_days
+    (days that could actually be evaluated), usable_moisture_days,
+    by_crop, and the daily detail table.
 
-    def moisture_percentile(value):
-        idx = np.searchsorted(smap_sorted, value, side='right')
-        return 100.0 * idx / len(smap_sorted)
+    Raises
+    ------
+    ValueError if any crop in rotation_plan is missing from kc_table.
+    """
+    # Check every crop up front, before any computing. A misspelled crop
+    # used to be silently dropped, which quietly shrank the totals.
+    known_crops = set(kc_table["crop"].unique())
+    for entry in rotation_plan:
+        if entry["crop"] not in known_crops:
+            raise ValueError(
+                f"No Kc stages for crop '{entry['crop']}' in kc_table — "
+                f"known crops: {sorted(known_crops)}"
+            )
+
+    planned_days = int(sum(
+        kc_table.loc[kc_table["crop"] == entry["crop"], "length_days"].sum()
+        for entry in rotation_plan
+    ))
+    base = {"analog_year": analog_year, "planned_days": planned_days}
+
+    if not rotation_plan:
+        return {**base, "usable_moisture_days": 0, "total_days": 0,
+                "by_crop": {}, "detail": pd.DataFrame()}
+
+    first_start = pd.Timestamp(rotation_plan[0]["start_date"])
+    year_shift = analog_year - first_start.year
+
+    smap_clean = smap_series.dropna()
+    smap_doy = smap_clean.index.dayofyear.values
+    smap_year = smap_clean.index.year.values
+    smap_vals = smap_clean.values
+
+    def seasonal_percentile(date, value):
+        """Percent of OTHER years' values, within +/- window_days of this
+        day of the year, that are at or below this value. None if there
+        is no reference data for this time of year."""
+        gap = np.abs(smap_doy - date.dayofyear)
+        gap = np.minimum(gap, 366 - gap)  # wrap around New Year
+        reference = smap_vals[(gap <= window_days) & (smap_year != date.year)]
+        if len(reference) == 0:
+            return None
+        return 100.0 * np.sum(reference <= value) / len(reference)
 
     def required_percentile(kc):
         kc_clamped = max(kc_low, min(kc_high, kc))
@@ -288,7 +330,13 @@ def backtest_rotation(rotation_plan, analog_year, power_df, smap_series, kc_tabl
 
     for entry in rotation_plan:
         crop = entry["crop"]
-        start = pd.Timestamp(entry["start_date"])
+        raw_start = pd.Timestamp(entry["start_date"])
+        target_year = raw_start.year + year_shift
+        try:
+            start = raw_start.replace(year=target_year)
+        except ValueError:  # Feb 29 shifted into a non-leap year
+            start = raw_start.replace(year=target_year, day=28)
+
         crop_stages = kc_table[kc_table["crop"] == crop].reset_index(drop=True)
 
         day_offset = 0
@@ -304,28 +352,30 @@ def backtest_rotation(rotation_plan, analog_year, power_df, smap_series, kc_tabl
                 if current_date not in power_df.index or current_date not in smap_series.index:
                     continue
 
-                row = power_df.loc[current_date]
-                doy = current_date.dayofyear
-                eto = eto_penman_monteith(row, doy, latitude_deg, elevation_m)
-                demand_mm = kc * eto
-
                 sm_value = smap_series.loc[current_date]
-                pctl = moisture_percentile(sm_value)
+                pctl = seasonal_percentile(current_date, sm_value)
+                if pctl is None:
+                    continue
+
+                row = power_df.loc[current_date]
+                eto = eto_penman_monteith(row, current_date.dayofyear, latitude_deg, elevation_m)
                 req_pctl = required_percentile(kc)
-                usable = pctl >= req_pctl
 
                 daily_rows.append({
                     "date": current_date, "crop": crop, "stage": stage_name,
-                    "kc": kc, "eto_mm": eto, "demand_mm": round(demand_mm, 2),
+                    "kc": kc, "eto_mm": eto, "demand_mm": round(kc * eto, 2),
                     "sm_rootzone": sm_value, "sm_percentile": round(pctl, 1),
-                    "required_percentile": round(req_pctl, 1), "usable": usable
+                    "required_percentile": round(req_pctl, 1),
+                    "usable": pctl >= req_pctl
                 })
 
     detail_df = pd.DataFrame(daily_rows)
     if detail_df.empty:
-        return {"usable_moisture_days": 0, "total_days": 0, "detail": detail_df}
+        return {**base, "usable_moisture_days": 0, "total_days": 0,
+                "by_crop": {}, "detail": detail_df}
 
     return {
+        **base,
         "usable_moisture_days": int(detail_df["usable"].sum()),
         "total_days": len(detail_df),
         "by_crop": detail_df.groupby("crop")["usable"].agg(["sum", "count"]).to_dict("index"),
