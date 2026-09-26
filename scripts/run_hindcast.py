@@ -1,8 +1,11 @@
 """
 scripts/run_hindcast.py
 
-Task 5b: leave-one-year-out hindcast of rabi outcomes, the El Nino lens,
-onset sensitivity and 1981-2025 trends, for the five districts. Writes
+Task 5b/5c: leave-one-year-out hindcast of rabi outcomes, the El Nino
+lens, onset sensitivity and trends, for the five districts. The primary
+analysis window is 2001-2025 (see CLAUDE.md, "Data facts": pre-2001
+NASA POWER rain is not consistent with later years). The full 1981-2025
+record is shown only in the appendix data-consistency check. Writes
 docs/results/hindcast.md.
 
 Run from the repo root (takes about 5 minutes):
@@ -107,9 +110,8 @@ def compute():
         recent_feats = feats[feats.index >= RECENT[0]]
         for key in OUTCOMES:
             res["loo"][(name, key)] = loo_hindcast(outcomes[key], feats, labels["phase"], k=K)
-            if name != SHARED_CELL:
-                res["loo_recent"][(name, key)] = loo_hindcast(
-                    outcomes[key].loc[RECENT[0]:RECENT[1]], recent_feats, labels["phase"], k=K)
+            res["loo_recent"][(name, key)] = loo_hindcast(
+                outcomes[key].loc[RECENT[0]:RECENT[1]], recent_feats, labels["phase"], k=K)
         onsets = onset_sensitivity(power["rainfall_mm"], YEARS, decision_date=DECISION_DATE)
         onsets["district"] = name
         res["onsets"].append(onsets)
@@ -172,7 +174,9 @@ def skill_cell(row):
     return bold_if(text, row["sign_p"])
 
 
-def pooled_skill(res, key, recent=False):
+def pooled_skill(res, key, recent=True):
+    """recent=True (default): primary window, 2001-2025. recent=False:
+    full 1981-2025 record, appendix only."""
     source = res["loo_recent"] if recent else res["loo"]
     table = pd.concat([source[(d, key)] for d in pooled_districts(res)])
     return skill_table(table, METHODS)
@@ -213,18 +217,18 @@ def unconfirmed_feature_years(res, d):
     return [y for y in feats.index if unconfirmed_onset(feats.loc[y, "onset_doy"], y, DECISION_DATE)]
 
 
-def enso_lists(res):
+def enso_lists(res, years):
     lab = res["labels"]
-    el = [y for y in YEARS if lab.loc[y, "phase"] == "el_nino"]
-    strong = [y for y in YEARS if lab.loc[y, "label"] == "strong_el_nino"]
-    return el, strong, lab["phase"].value_counts()
+    el = [y for y in years if lab.loc[y, "phase"] == "el_nino"]
+    strong = [y for y in years if lab.loc[y, "label"] == "strong_el_nino"]
+    return el, strong, lab.loc[years, "phase"].value_counts()
 
 
-def lens_rows(res):
-    el, _, _ = enso_lists(res)
+def lens_rows(res, years):
+    el, _, _ = enso_lists(res, years)
     out = []
     for key, (label, unit, dec) in LENS.items():
-        s = pooled_mean(res, key)
+        s = pooled_mean(res, key).loc[years[0]:years[-1]]
         is_el = s.index.isin(el)
         out.append((key, label, unit, dec, compare_groups(s[is_el], s[~is_el])))
     return out
@@ -232,7 +236,7 @@ def lens_rows(res):
 
 # ---------------- report sections ----------------
 
-def section_glance(res, recent=False):
+def section_glance(res, recent=True):
     lines = ["| Outcome | " + " | ".join(METHOD_NAMES[m] for m in METHODS) + " |",
              "|---|" + "---|" * len(METHODS)]
     for key, (label, unit, _) in OUTCOMES.items():
@@ -242,7 +246,10 @@ def section_glance(res, recent=False):
     return "\n".join(lines)
 
 
-def section_skill(res):
+def section_skill(res, recent=True):
+    """recent=True (default): primary window, 2001-2025. recent=False:
+    full 1981-2025 record, appendix only."""
+    source = res["loo_recent"] if recent else res["loo"]
     parts = []
     for key, (label, unit, dec) in OUTCOMES.items():
         rows = [f"#### {label} ({unit})", "",
@@ -254,9 +261,9 @@ def section_skill(res):
             rows.append(f"| {name} | {sk['n'].iloc[0]} | {fmt(sk['mae_reference'].iloc[0], dec)} | " +
                         " | ".join(skill_cell(sk.loc[m]) for m in METHODS) + " |")
         for d in pooled_districts(res):
-            add(dname(d), skill_table(res["loo"][(d, key)], METHODS))
-        add("**Pooled (4 districts)**", pooled_skill(res, key))
-        add(row_name(SHARED_CELL), skill_table(res["loo"][(SHARED_CELL, key)], METHODS))
+            add(dname(d), skill_table(source[(d, key)], METHODS))
+        add("**Pooled (4 districts)**", pooled_skill(res, key, recent))
+        add(row_name(SHARED_CELL), skill_table(source[(SHARED_CELL, key)], METHODS))
         parts.append("\n".join(rows))
     return "\n\n".join(parts)
 
@@ -294,13 +301,15 @@ def section_consistency(res):
     return table, unconfirmed, missing
 
 
-def section_lens(res):
-    el, strong, counts = enso_lists(res)
+def section_lens(res, years):
+    """years: contiguous list of season years to restrict the lens to
+    (RECENT for the primary window, YEARS for the full-record appendix)."""
+    el, strong, counts = enso_lists(res, years)
     lab = res["labels"]
     lines = ["| Outcome | n El Niño seasons | n other seasons | median, El Niño | median, other | "
              "difference (El Niño - other) | Mann-Whitney p |",
              "|---|---|---|---|---|---|---|"]
-    for _, label, unit, dec, c in lens_rows(res):
+    for _, label, unit, dec, c in lens_rows(res, years):
         lines.append(f"| {label} ({unit}) | {c['n_group']} | {c['n_rest']} | "
                      f"{fmt(c['median_group'], dec)} | {fmt(c['median_rest'], dec)} | "
                      f"{bold_if(fmt(c['difference'], dec, sign=True), c['p'])} | "
@@ -309,7 +318,7 @@ def section_lens(res):
 
     heads = ["Season", "ONI ASO"] + [f"{LENS[k][0]} ({LENS[k][1]})" for k in LENS]
     rows = ["| " + " | ".join(heads) + " |", "|" + "---|" * len(heads)]
-    means = {k: pooled_mean(res, k) for k in LENS}
+    means = {k: pooled_mean(res, k).loc[years[0]:years[-1]] for k in LENS}
     for y in strong:
         rows.append(f"| {season_name(y)} | {lab.loc[y, 'oni']:+.2f} | " +
                     " | ".join(fmt(means[k].get(y), LENS[k][2]) for k in LENS) + " |")
@@ -322,17 +331,17 @@ def section_lens(res):
     for d in pooled_districts(res) + [SHARED_CELL]:
         cells = []
         for k, (_, _, dec) in LENS.items():
-            s = res["outcomes"][d][k]
+            s = res["outcomes"][d][k].loc[years[0]:years[-1]]
             is_el = s.index.isin(el)
             c = compare_groups(s[is_el], s[~is_el])
             cells.append(bold_if(f"{fmt(c['difference'], dec, sign=True)} ({p_eq(c['p'])})", c["p"]))
         rows.append(f"| {row_name(d)} | " + " | ".join(cells) + " |")
     district_table = "\n".join(rows)
 
-    changed = [y for y in YEARS if res["labels_jas"].loc[y, "phase"] != lab.loc[y, "phase"]]
+    changed = [y for y in years if res["labels_jas"].loc[y, "phase"] != lab.loc[y, "phase"]]
     changed_text = (", ".join(f"{season_name(y)} ({res['labels_jas'].loc[y, 'phase']} on JAS, "
                               f"{lab.loc[y, 'phase']} on ASO)" for y in changed) if changed else "none")
-    others = [y for y in YEARS if y not in el]
+    others = [y for y in years if y not in el]
     near = [y for y in el if 1.4 <= lab.loc[y, "oni"] < 1.5]
     near_text = ("; ".join(f"{season_name(y)} (ASO {lab.loc[y, 'oni']:+.2f})" for y in near)
                  if near else "none")
@@ -340,6 +349,21 @@ def section_lens(res):
             "el_text": ", ".join(season_name(y) for y in el), "counts": counts,
             "changed_text": changed_text, "n_strong": len(strong),
             "median_year_el": float(np.median(el)), "median_year_other": float(np.median(others))}
+
+
+def section_rain_jump(res):
+    """Small year-by-year table showing the pre-1997 vs post-1997 rain
+    jump in NASA POWER (task 5c finding: a data-consistency break, not
+    climate). Calendar years, not season years, but they coincide for
+    Jun-Sep rain (offset 0)."""
+    years = list(range(1993, 2001))
+    jj_pooled = pooled_mean(res, "jjas_rain")
+    jj_cumilla = res["outcomes"]["cumilla"]["jjas_rain"]
+    lines = ["| Year | Jun-Sep rain, mean of 4 districts (mm) | Jun-Sep rain, Cumilla (mm) |",
+             "|---|---|---|"]
+    for y in years:
+        lines.append(f"| {y} | {fmt(jj_pooled.get(y), 0)} | {fmt(jj_cumilla.get(y), 0)} |")
+    return "\n".join(lines)
 
 
 def section_onset(res):
@@ -397,66 +421,56 @@ def irrigation_step_text(res):
 
 # ---------------- plain-English summary ----------------
 
-def meaning(res, tr, tr_recent, lens):
+def meaning(res, tr_recent, lens):
+    """All numbers here are over the primary window, {RECENT[0]}-{RECENT[1]}
+    only. The full 1981-2025 record is appendix-only (see the data-consistency
+    check) and is never quoted here."""
     lines = []
-    not_robust, robust = [], []
+    wins = []
     for key, (label, _, _) in OUTCOMES.items():
-        full, rec = pooled_skill(res, key), pooled_skill(res, key, recent=True)
+        sk = pooled_skill(res, key)
         for m in METHODS:
-            f, r = full.loc[m], rec.loc[m]
-            if f["skill"] > 0 and significant(f["sign_p"]):
-                entry = (f"{METHOD_NAMES[m]} for {lower_first(label)}: skill {f['skill']:+.2f} "
-                         f"({p_eq(f['sign_p'])}) over all seasons, {r['skill']:+.2f} "
-                         f"({p_eq(r['sign_p'])}) over {RECENT[0]}-{RECENT[1]}")
-                (robust if r["skill"] > 0 and significant(r["sign_p"]) else not_robust).append(entry)
+            r = sk.loc[m]
+            if r["skill"] > 0 and significant(r["sign_p"]):
+                wins.append(f"{METHOD_NAMES[m]} for {lower_first(label)}: skill {r['skill']:+.2f} "
+                            f"({p_eq(r['sign_p'])})")
     best = max(pooled_skill(res, k)["skill"].max() for k in OUTCOMES)
-    if not robust and not not_robust:
+    if not wins:
         lines.append(f"- **Nothing tested beats the long-term average.** Pooled over the four "
-                     f"districts, no method is closer in a significant majority of seasons; the best "
-                     f"pooled skill is {best:+.2f} (1 = perfect, 0 = no better than the long-term average).")
+                     f"districts, {RECENT[0]}-{RECENT[1]}, no method is closer in a significant "
+                     f"majority of seasons; the best pooled skill is {best:+.2f} (1 = perfect, "
+                     f"0 = no better than the long-term average).")
     else:
-        text = "- **Nothing tested reliably beats the long-term average.**"
-        if not_robust:
-            text += ((" The only pooled win does not" if len(not_robust) == 1 else
-                      " These pooled wins do not") +
-                     f" hold up in the {RECENT[0]}-{RECENT[1]} check: " + "; ".join(not_robust) + ".")
-        if robust:
-            text += " Wins that hold in both periods: " + "; ".join(robust) + "."
-        text += " Every other method-outcome pair is within chance of the long-term average or worse."
-        lines.append(text)
+        lines.append(f"- **Nothing tested reliably beats the long-term average**, {RECENT[0]}-"
+                     f"{RECENT[1]}, except: " + "; ".join(wins) + ". Every other method-outcome "
+                     f"pair is within chance of the long-term average or worse.")
 
     analog = [pooled_skill(res, k).loc["analog_1", "skill"] for k in OUTCOMES]
     analog_k = [pooled_skill(res, k).loc[f"analog_{K}", "skill"] for k in OUTCOMES]
     worse = [lower_first(OUTCOMES[k][0]) for k in OUTCOMES
-             for sk in (pooled_skill(res, k), pooled_skill(res, k, recent=True))
-             if sk.loc["analog_1", "skill"] < 0 and significant(sk.loc["analog_1", "sign_p"])]
+             if pooled_skill(res, k).loc["analog_1", "skill"] < 0
+             and significant(pooled_skill(res, k).loc["analog_1", "sign_p"])]
     worse_text = (f" It is significantly worse than the long-term average for "
-                  f"{'; '.join(sorted(set(worse)))} in at least one period." if worse else "")
-    headline = ("is worse than the long-term average** for every outcome over all seasons"
-                if max(analog) < 0 else "does not beat the long-term average** over all seasons")
+                  f"{'; '.join(sorted(set(worse)))}." if worse else "")
+    headline = (f"is worse than the long-term average** for every outcome, {RECENT[0]}-{RECENT[1]}"
+                if max(analog) < 0 else f"does not beat the long-term average** over {RECENT[0]}-{RECENT[1]}")
     lines.append(f"- **The single nearest analog year (the \"field twin\") {headline} "
                  f"(pooled skill {min(analog):+.2f} to {max(analog):+.2f})."
                  f"{worse_text} The mean of {K} analogs scores {min(analog_k):+.2f} to "
                  f"{max(analog_k):+.2f}. This backs CropShift's rule: the field twin is shown as an **example** of "
                  f"a past season, never as a guide to this one, and is not used in the ranking.")
 
-    jj = pooled_mean(res, "jjas_rain")
-    ratio = jj.loc[RECENT[0]:RECENT[1]].mean() / jj.loc[EARLY[0]:EARLY[1]].mean()
     lines.append(f"- **Keep ranking on the spread of past years** (\"problems in X of N years\", average "
                  f"and worst 20%), not on one analog year or an ENSO average: the long-term average "
-                 f"is the benchmark nothing here beats. "
-                 f"**But check the early years first.** In NASA POWER, mean Jun-Sep rain over the four "
-                 f"districts is {jj.loc[EARLY[0]:EARLY[1]].mean():.0f} mm in {EARLY[0]}-{EARLY[1]} and "
-                 f"{jj.loc[RECENT[0]:RECENT[1]].mean():.0f} mm in {RECENT[0]}-{RECENT[1]}, and most "
-                 f"{EARLY[0]}-{EARLY[1]} years have no confirmed monsoon onset (see the data "
-                 f"consistency check). Until the POWER rain is checked against GPM IMERG or BMD "
-                 f"station data, count problem years over {RECENT[0]}-{RECENT[1]}, or show the two "
-                 f"periods separately.")
+                 f"is the benchmark nothing here beats. Rankings, skill and trends use only "
+                 f"{RECENT[0]}-{RECENT[1]}: NASA POWER rain before 2001 is not consistent with later "
+                 f"years (see the appendix data-consistency check), so pre-2001 seasons are not used "
+                 f"in any recommendation.")
 
     sig = [(label, unit, c) for _, label, unit, _, c in lens if significant(c["p"])]
     if sig:
-        lines.append("- **El Niño lens (context, not forecast):** differences with p < 0.05 in the "
-                     "4-district mean: " +
+        lines.append(f"- **El Niño lens (context, not forecast, {RECENT[0]}-{RECENT[1]}):** "
+                     "differences with p < 0.05 in the 4-district mean: " +
                      "; ".join(f"{lower_first(label)} {c['difference']:+.0f} {unit} (difference of "
                                f"medians, {p_eq(c['p'])}, "
                                f"n = {c['n_group']} El Niño vs {c['n_rest']} other seasons)"
@@ -465,35 +479,38 @@ def meaning(res, tr, tr_recent, lens):
                      f"Show it only with n and the label \"context, not forecast\"; do not use it in "
                      f"the ranking.")
     else:
-        lines.append("- **El Niño lens (context, not forecast):** no El Niño vs other-season "
-                     "difference reaches p < 0.05 in the 4-district mean.")
+        lines.append(f"- **El Niño lens (context, not forecast, {RECENT[0]}-{RECENT[1]}):** no El "
+                     "Niño vs other-season difference reaches p < 0.05 in the 4-district mean.")
 
     def listing(t):
         items = [f"{TRENDS[k][1]} {t[('pooled', k)]['slope_per_decade']:+.1f} {TRENDS[k][2]}/decade "
                  f"({p_eq(t[('pooled', k)]['p'])})" for k in TRENDS if significant(t[("pooled", k)]["p"])]
         return "; ".join(items) if items else "none"
-    lines.append(f"- **Trends (4-district mean, p < 0.05):** {YEARS[0]}-{YEARS[-1]}: {listing(tr)}. "
-                 f"{RECENT[0]}-{RECENT[1]} only: {listing(tr_recent)}. Mean Jun-Sep rain is "
-                 f"{ratio:.1f} times higher in {RECENT[0]}-{RECENT[1]} than in {EARLY[0]}-{EARLY[1]}; a "
-                 f"change that large is not a plausible climate signal, so do **not** quote these "
-                 f"trends (or the Tmax fall that may go with them) as climate change. They point to "
-                 f"a consistency problem in the POWER record to check first.")
+    lines.append(f"- **Trends (4-district mean, p < 0.05, {RECENT[0]}-{RECENT[1]} only):** "
+                 f"{listing(tr_recent)}. The full 1981-2025 record is not used for trends: it has a "
+                 f"large jump in NASA POWER rain around 1997 that is a data-consistency problem, not "
+                 f"a climate signal (see the appendix).")
     return "\n".join(lines)
 
 
 # ---------------- report ----------------
 
 def write_report(res):
-    tr = trend_results(res, (YEARS[0], YEARS[-1]))
+    recent_years = list(range(RECENT[0], RECENT[1] + 1))
     tr_recent = trend_results(res, RECENT)
-    lens = lens_rows(res)
-    ls = section_lens(res)
+    lens_recent = lens_rows(res, recent_years)
+    ls_recent = section_lens(res, recent_years)
     on = section_onset(res)
     cons_table, unconfirmed_years, missing_years = section_consistency(res)
     pooled_names = ", ".join(dname(d) for d in pooled_districts(res))
-    n_trend_tests = 2 * len(TRENDS) * (len(res["districts"]) + 1)
+    n_trend_tests_recent = len(TRENDS) * (len(res["districts"]) + 1)
 
-    text = f"""# Hindcast, El Niño lens and trends (Task 5b)
+    # appendix-only, full 1981-2025 record
+    tr_full = trend_results(res, (YEARS[0], YEARS[-1]))
+    ls_full = section_lens(res, YEARS)
+    n_trend_tests_full = len(TRENDS) * (len(res["districts"]) + 1)
+
+    text = f"""# Hindcast, El Niño lens and trends (Task 5b/5c)
 
 Generated by `scripts/run_hindcast.py`. Do not edit by hand; re-run the script.
 
@@ -502,55 +519,37 @@ were not allowed to see, measured as **skill vs the long-term average** of the o
 seasons. It tests methods; it says nothing about any future season. All numbers are
 for NASA POWER data for the area around each district point, not for a particular field.
 
+**Primary analysis window: {RECENT[0]}-{RECENT[1]}.** NASA POWER rain before 2001 is not
+consistent with later years (see the appendix), so recommendations, rankings, skill and
+trends below use {RECENT[0]}-{RECENT[1]} only. The full 1981-2025 record appears only in the
+appendix, "Data-consistency check (not used for recommendations)".
+
 ## At a glance: pooled skill vs the long-term average
 
 Pooled over {pooled_names} (Noakhali excluded; see Setup). Each cell: skill (seasons
 closer than the long-term average / seasons scored, two-sided sign test). Skill =
 1 - MAE(method) / MAE(long-term average): 1 is perfect, 0 is no better than the long-term
-average, below 0 is worse. **Bold** = p < 0.05, in either direction.
-
-**All seasons** ({YEARS[0]}-{YEARS[-1]} for rain, {WB_FIRST_YEAR}-{YEARS[-1]} for irrigation and stress):
+average, below 0 is worse. **Bold** = p < 0.05, in either direction. Seasons
+{RECENT[0]}-{RECENT[1]}; analogs, averages and scaling use only these seasons.
 
 {section_glance(res)}
 
-**Robustness check: seasons {RECENT[0]}-{RECENT[1]} only** (analogs, averages and scaling use only these seasons):
-
-{section_glance(res, recent=True)}
-
 ## What this means for CropShift
 
-{meaning(res, tr, tr_recent, lens)}
-
-## Data consistency check: {EARLY[0]}-{EARLY[1]} vs {RECENT[0]}-{RECENT[1]}
-
-The POWER record was extended back to 1981 in task 5a. The early years look different:
-
-{cons_table}
-
-"Confirmed onset" = `rain_onset()` found an onset that passed its dry-spell and 30-day
-checks. Years with **no onset at all** by 31 Oct (left out of the analog methods):
-{missing_years}. Years whose analog features rest on an **unconfirmed 25-31 Oct onset**
-(a wet week too close to the 31 Oct cutoff for `rain_onset()` to check; it now rejects these,
-so this is a check that should read "none"; see section 3): {unconfirmed_years}.
-
-Most {EARLY[0]}-{EARLY[1]} years never reach 450 mm in 30 days in POWER rain. Either the early
-monsoons really were much weaker or, more likely, the rain record is not consistent over
-time (a reanalysis's inputs change over the decades). This affects anything that counts
-problem years over the whole record.
+{meaning(res, tr_recent, lens_recent)}
 
 ## Setup
 
-- **Season Y** = rabi season from 1 Nov of Y to 30 Apr of Y+1, Y = {YEARS[0]}-{YEARS[-1]}.
-  **Decision date** = 31 Oct of Y: nothing after it is used to choose analogs or the
-  ENSO label.
+- **Season Y** = rabi season from 1 Nov of Y to 30 Apr of Y+1. **Primary window:**
+  Y = {RECENT[0]}-{RECENT[1]}. **Decision date** = 31 Oct of Y: nothing after it is used to
+  choose analogs or the ENSO label.
 - **Outcomes** per district and season:
-  - rabi rain (mm), NASA POWER daily rain, all {len(YEARS)} seasons;
+  - rabi rain (mm), NASA POWER daily rain;
   - net irrigation (mm) and rainfed water-stress days for **mustard** and **wheat** sown on
     15 Nov, from the FAO-56 root-zone balance in `src/compute/water_balance.py`
     (`crop_season_all_years`, default spin-up from 1 Aug at field capacity, soil from
-    `data/reference/soil_params.csv`, Zr and p from `data/reference/crop_params.csv`). Only
-    seasons {WB_FIRST_YEAR}-{YEARS[-1]}, because POWER solar radiation (needed for FAO-56 ET0)
-    starts on 1984-01-01. The irrigated run refills the root zone to field capacity each
+    `data/reference/soil_params.csv`, Zr and p from `data/reference/crop_params.csv`).
+    The irrigated run refills the root zone to field capacity each
     time depletion passes RAW, so net irrigation moves in steps of about one refill
     (RAW: {irrigation_step_text(res)}) and behaves like a count of irrigations.
 - **Four ways to estimate a held-out season**, leave-one-year-out (the season being checked
@@ -562,7 +561,7 @@ problem years over the whole record.
   3. *mean of {K} nearest analogs*: the same ranking, first {K} years averaged;
   4. *ENSO-phase average*: mean of the other seasons in the same ENSO phase (El Niño, neutral
      or La Niña; strong El Niño counted as El Niño). Fallbacks to the long-term average
-     because a phase had no other season: {int(sum(t['enso_fallback'].sum() for t in res['loo'].values()))}.
+     because a phase had no other season: {int(sum(t['enso_fallback'].sum() for t in res['loo_recent'].values()))}.
 - Analog candidates are all other seasons with an outcome, earlier **and** later (a standard
   hindcast, not a real-time replay). A season whose year has no onset (no feature row) is
   left out for **every** method in that district, so all methods are scored on the same seasons.
@@ -572,9 +571,10 @@ problem years over the whole record.
   Noakhali is reported in every table but **excluded from all pooled statistics**, so that
   cell is not counted twice. Do not read a Feni-Noakhali contrast into any number here.
 
-## 1. Skill vs the long-term average, per district (all seasons)
+## 1. Skill vs the long-term average, per district
 
 Cells as in "At a glance". MAE of the long-term average is in the outcome's unit.
+Seasons {RECENT[0]}-{RECENT[1]}.
 
 {section_skill(res)}
 
@@ -584,42 +584,41 @@ Cells as in "At a glance". MAE of the long-term average is in the outcome's unit
 `data/reference/oni.csv`: El Niño >= +0.5, strong El Niño >= +1.5, La Niña <= -0.5, otherwise
 neutral. ASO sea-surface temperatures are all observed by 31 Oct, but CPC publishes the ASO
 value in early November. Using the previous value (JAS), which is published by then, would
-change these seasons: {ls['changed_text']}.
+change these seasons: {ls_recent['changed_text']}.
 
-Seasons {YEARS[0]}-{YEARS[-1]}: {ls['counts'].get('el_nino', 0)} El Niño (of which {ls['n_strong']} strong),
-{ls['counts'].get('neutral', 0)} neutral, {ls['counts'].get('la_nina', 0)} La Niña.
-El Niño seasons: {ls['el_text']}. They are spread across the record (median year
-{ls['median_year_el']:.0f}, other seasons {ls['median_year_other']:.0f}), so the drift described in the
-data consistency check should not by itself create an El Niño difference.
+Seasons {RECENT[0]}-{RECENT[1]}: {ls_recent['counts'].get('el_nino', 0)} El Niño (of which {ls_recent['n_strong']} strong),
+{ls_recent['counts'].get('neutral', 0)} neutral, {ls_recent['counts'].get('la_nina', 0)} La Niña.
+El Niño seasons: {ls_recent['el_text']}.
 
 ### El Niño seasons vs all other seasons (mean of {pooled_names})
 
 Context, not forecast. The next monsoon (Jun-Sep of Y+1) and next pre-monsoon (Mar-May of Y+1)
-come months after the rabi season. **Bold** = p < 0.05. Irrigation and stress rows cover
-seasons {WB_FIRST_YEAR}+ only; the next monsoon of season {YEARS[-1]} is not complete in the data yet.
+come months after the rabi season. **Bold** = p < 0.05. The next monsoon of season {RECENT[1]}
+is not complete in the data yet.
 
-{ls['main']}
+{ls_recent['main']}
 
 ### Strong El Niño seasons one by one (mean of {pooled_names})
 
 Context, not forecast. Only the ASO value counts, so seasons that became strong later in the
-winter are not listed; just under +1.5 on 31 Oct: {ls['near']}.
+winter are not listed; just under +1.5 on 31 Oct: {ls_recent['near']}.
 
-{ls['strong']}
+{ls_recent['strong']}
 
 ### El Niño minus other seasons, per district (difference of medians, Mann-Whitney p)
 
 Context, not forecast.
 
-{ls['districts']}
+{ls_recent['districts']}
 
 ## 3. Onset sensitivity (kharif monsoon onset)
 
 `rain_onset()` thresholds varied: the 7-day total that starts the monsoon (15 / 20 / 25 mm) and
 the 30-day total that confirms it (350 / 450 / 550 mm). Each year uses 1 Jan to 31 Oct only
-(as `build_feature_table()` does). District-years pooled over {pooled_names}. Shift = onset
-with these thresholds minus onset with the default (20 mm, 450 mm), for years where both give
-a confirmed onset (+ = later).
+(as `build_feature_table()` does). District-years pooled over {pooled_names}, all
+{YEARS[0]}-{YEARS[-1]} (this check is about onset detection, not about ranking a season, so it
+is not restricted to the primary window). Shift = onset with these thresholds minus onset with
+the default (20 mm, 450 mm), for years where both give a confirmed onset (+ = later).
 
 {on['table']}
 
@@ -635,23 +634,16 @@ a confirmed onset (+ = later).
 ## 4. Trends
 
 Theil-Sen slope per decade [95% interval], Mann-Kendall tau and p (`scipy.stats.theilslopes`,
-`scipy.stats.kendalltau` against the year). **Bold** = p < 0.05. Mustard irrigation starts in
-{WB_FIRST_YEAR}.
-
-### {YEARS[0]}-{YEARS[-1]}
-
-{section_trends(res, tr, (YEARS[0], YEARS[-1]))}
-
-### {RECENT[0]}-{RECENT[1]} only (robustness check)
+`scipy.stats.kendalltau` against the year). **Bold** = p < 0.05. Seasons {RECENT[0]}-{RECENT[1]}.
 
 {section_trends(res, tr_recent, RECENT)}
 
 - **Autocorrelation is not corrected** (no pre-whitening or variance correction), so p-values
   may be too small if neighbouring years are alike.
-- {n_trend_tests} tests are shown; at p < 0.05 a few could come out "significant" by chance.
+- {n_trend_tests_recent} tests are shown; at p < 0.05 a few could come out "significant" by chance.
 - Trends in a gridded reanalysis such as NASA POWER can reflect changes in the observations
-  feeding it, not only the climate (see the data consistency check). Check against GPM IMERG
-  or BMD station data before quoting any trend as climate change.
+  feeding it, not only the climate. Do not extend these trends back before 2001 (see the
+  appendix data-consistency check).
 
 ## Caveats
 
@@ -661,6 +653,49 @@ Theil-Sen slope per decade [95% interval], Mann-Kendall tau and p (`scipy.stats.
   soil water compares with SMAP.
 - Leave-one-year-out uses later years as candidates too. A real-time replay (earlier years
   only) would have fewer candidates, especially for the early seasons.
+
+## Appendix: Data-consistency check (not used for recommendations)
+
+Everything in this appendix uses the full 1981-2025 NASA POWER record. It is kept only to
+show why {RECENT[0]}-{RECENT[1]} was chosen as the primary window above; none of these numbers
+feed the ranking, ENSO lens or trend statements used by CropShift.
+
+### The rain jump
+
+Mean Jun-Sep rain jumps sharply around 1997, well before any plausible change in the local
+monsoon:
+
+{section_rain_jump(res)}
+
+### {EARLY[0]}-{EARLY[1]} vs {RECENT[0]}-{RECENT[1]}
+
+{cons_table}
+
+"Confirmed onset" = `rain_onset()` found an onset that passed its dry-spell and 30-day
+checks. Years with **no onset at all** by 31 Oct (left out of the analog methods):
+{missing_years}. Years whose analog features rest on an **unconfirmed 25-31 Oct onset**
+(a wet week too close to the 31 Oct cutoff for `rain_onset()` to check; it now rejects these,
+so this is a check that should read "none"; see section 3): {unconfirmed_years}.
+
+Most {EARLY[0]}-{EARLY[1]} years never reach 450 mm in 30 days in POWER rain. Either the early
+monsoons really were much weaker or, more likely, the rain record is not consistent over
+time (a reanalysis's inputs change over the decades). Until this is checked against GPM
+IMERG or BMD station data, 1981-2000 stays appendix-only.
+
+### Full-record ({YEARS[0]}-{YEARS[-1]}) skill, El Niño lens and trends
+
+Shown for reference only, not used for recommendations.
+
+{section_skill(res, recent=False)}
+
+{ls_full['main']}
+
+{section_trends(res, tr_full, (YEARS[0], YEARS[-1]))}
+
+- {n_trend_tests_full} tests shown here. Mean Jun-Sep rain is several times higher in
+  {RECENT[0]}-{RECENT[1]} than in {EARLY[0]}-{EARLY[1]} (see the rain jump table above); a change
+  that large is not a plausible climate signal, so these full-record trends must **not** be
+  quoted as climate change, or at all outside this appendix.
 
 ## Sources
 

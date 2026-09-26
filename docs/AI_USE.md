@@ -186,6 +186,24 @@ and those years now count as "no onset", so 21 fewer district-seasons
 are scored in the analog comparison (pooled 141 -> 120 for rabi rain).
 The conclusion is unchanged: nothing tested beats the long-term average.
 
+**Claude Code** — Task 5c, made 2001-2025 the primary analysis window.
+Restructured `scripts/run_hindcast.py` and `docs/results/hindcast.md` so
+the hindcast skill table, El Nino lens and trends are computed and
+reported over 2001-2025 only; the 1981-2025 record now appears only in
+an "Appendix: Data-consistency check (not used for recommendations)",
+alongside a small year-by-year table (1993-2000) showing NASA POWER's
+Jun-Sep rain jump from ~700-1,200 mm to ~1,300-1,600 mm around 1997. This
+was a data-consistency break flagged during Task 5b, not a real change
+in the monsoon. Added the corresponding line to CLAUDE.md's "Data facts".
+Added `requirements.txt` (packages actually imported by the code: pandas,
+numpy, scipy, requests, pytest, python-dotenv, openai; major versions
+pinned only). Deleted 6 remote branches already merged into main
+(fix-onset-end-of-data, task1-guard, task3-tests, task4-water-balance,
+task5b-hindcast, team-setup); 2 others (online-first, task5a-data-1981)
+had already been deleted. `python -m pytest src -q` passes unchanged
+(102 tests; no test values changed since Task 5b's fix, only the report
+layout).
+
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA SMAP (via AppEEARS),
 and FAO-56 (Allen et al., 1998) reference values — see README and inline
