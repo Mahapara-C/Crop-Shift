@@ -26,14 +26,19 @@ this repo). Used for:
 - Compiling FAO-56 standard crop coefficient (Kc) reference values
 - Setting up the Hugging Face Inference Providers connection
   (`src/agents/test_hf_connection.py`, `test_hf_tool_calling.py`)
+- Writing `src/agents/guard.py`: the provenance gate that extracts every
+  number from the agent's narrated text (English and Bangla ০-৯ digits,
+  comma grouping, decimals, %) and blocks any number that doesn't match a
+  value inside a tool result carrying both `dataset` and `url`. Also wrote
+  its pytest tests (`test_guard.py`), including a fabricated-number case.
 
 **Hugging Face Inference Providers** — a free, open-source hosted model
 (Llama-3.1-8B-Instruct) is used as the CropShift agent's reasoning layer
 (Layer 3, `src/agents/`). Per the project's architecture rules, this model
 never computes any statistic or number itself — it only calls deterministic
 Python tools (Layer 1, `src/compute/`) and narrates their results. This is
-enforced by a provenance gate (`guard()`/`cite_check`, in progress) that
-blocks any narrated number that didn't come from a tool result.
+enforced by a provenance gate (`src/agents/guard.py`) that blocks any
+narrated number that doesn't match a cited tool result.
 
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA SMAP (via AppEEARS),
