@@ -54,6 +54,54 @@ def test_dry_spell_length_finds_longest_run():
     assert dry_spell_length(make_series(values)) == 5
 
 
+# ---------------- build_feature_table: decision_date ----------------
+
+def _monsoon_df(n_days=365, start="2019-01-01"):
+    """A year with a clear, valid monsoon onset around day 100, so
+    build_feature_table() actually produces a row (not excluded for lack
+    of onset)."""
+    values = [0.0] * 100 + [25.0] * 60 + [0.0] * (n_days - 160)
+    temps = [25.0] * n_days
+    return pd.DataFrame({"rainfall_mm": values, "temp_mean_c": temps},
+                        index=pd.date_range(start, periods=n_days, freq="D"))
+
+
+def test_decision_date_ignores_data_after_cutoff():
+    """Rainfall/temp changes made only AFTER decision_date must not move
+    the computed features at all."""
+    df = _monsoon_df()
+    table_before = build_feature_table(df, years=[2019], decision_date="10-31")
+    assert not table_before.empty  # sanity: onset was actually found
+
+    # Mutate only the data strictly after Oct 31 with wildly different
+    # values; the decision_date cutoff should make this invisible.
+    df_after = df.copy()
+    after_cutoff = df_after.index > pd.Timestamp("2019-10-31")
+    df_after.loc[after_cutoff, "rainfall_mm"] = 500.0
+    df_after.loc[after_cutoff, "temp_mean_c"] = 45.0
+    table_after = build_feature_table(df_after, years=[2019], decision_date="10-31")
+
+    pd.testing.assert_frame_equal(table_before, table_after)
+
+
+def test_different_decision_date_changes_features():
+    """An earlier decision_date that excludes the monsoon onset (or part
+    of the growing season) must change the computed features."""
+    values = [0.0] * 100 + [25.0] * 60 + [0.0] * 205  # onset ~day 100
+    df = pd.DataFrame({
+        "rainfall_mm": values,
+        "temp_mean_c": [25.0] * 200 + [30.0] * 165,
+    }, index=pd.date_range("2019-01-01", periods=365, freq="D"))
+
+    table_full = build_feature_table(df, years=[2019], decision_date="10-31")
+    table_early = build_feature_table(df, years=[2019], decision_date="06-30")
+
+    assert not table_full.equals(table_early)
+    # Full-season mean temp includes the later, hotter days; the early
+    # cutoff must not.
+    assert table_full.loc[2019, "mean_t2m_c"] != table_early.loc[2019, "mean_t2m_c"]
+
+
 # ---------------- nearest_analog_year ----------------
 
 def _three_year_table(onsets, amounts, spells, temps):

@@ -32,6 +32,18 @@ this repo). Used for:
   value inside a tool result carrying both `dataset` and `url`. Also wrote
   its pytest tests (`test_guard.py`), including a fabricated-number case.
 
+**Claude Code** — added a `decision_date` parameter (default `"10-31"`) to
+`build_feature_table()` in `src/compute/agroclimate.py`, so every feature
+for year Y (onset, onset amount, dry spell, mean temperature) is computed
+only from data on or before `decision_date` of that year — no feature can
+use data that wouldn't yet exist on the day a recommendation is made. Also
+adjusted the row's minimum-coverage floor to scale with `decision_date`
+(previously a flat 300 days, which would have rejected every early-season
+cutoff), threaded `decision_date` through
+`tool_nearest_analog_year()` in `src/agents/tool_functions.py`, and added
+tests proving (1) mutating data after `decision_date` does not change the
+computed features and (2) a different `decision_date` does change them.
+
 **Hugging Face Inference Providers** — a free, open-source hosted model
 (Llama-3.1-8B-Instruct) is used as the CropShift agent's reasoning layer
 (Layer 3, `src/agents/`). Per the project's architecture rules, this model

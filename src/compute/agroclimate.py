@@ -84,7 +84,7 @@ def dry_spell_length(daily_rainfall, dry_day_threshold=1.0):
     return int(is_dry.groupby((~is_dry).cumsum()).cumsum().max())
 
 
-def build_feature_table(df, years=range(2001, 2026)):
+def build_feature_table(df, years=range(2001, 2026), decision_date="10-31"):
     """One row per year: onset_doy, onset_amount_mm, dry_spell_days,
     mean_t2m_c — the four features nearest_analog_year() matches on.
     Years with no valid monsoon onset (per rain_onset()) are excluded
@@ -97,6 +97,11 @@ def build_feature_table(df, years=range(2001, 2026)):
         (as produced by the NASA POWER pull).
     years : iterable of int
         Which years to include, if present in df.
+    decision_date : str, "MM-DD"
+        Every feature for year Y is computed using only data from
+        Jan 1 to decision_date of year Y — no feature may use data
+        that wouldn't have been available yet on that date. Default
+        "10-31" keeps the full growing season.
 
     Returns
     -------
@@ -104,8 +109,15 @@ def build_feature_table(df, years=range(2001, 2026)):
     """
     rows = []
     for yr in years:
-        year_data = df[df.index.year == yr]
-        if len(year_data) < 300:
+        cutoff = pd.Timestamp(f"{yr}-{decision_date}")
+        year_data = df[(df.index.year == yr) & (df.index <= cutoff)]
+        # Completeness floor scales with decision_date: a mid-season cutoff
+        # naturally has fewer available days than a full year, so this
+        # checks coverage relative to the cutoff (min 300/365) rather than
+        # an absolute day count that would reject every early cutoff.
+        days_to_cutoff = (cutoff - pd.Timestamp(f"{yr}-01-01")).days + 1
+        min_days = 0.9 * min(300, days_to_cutoff)
+        if len(year_data) < min_days:
             continue
         onset = rain_onset(year_data["rainfall_mm"], yr)
         if onset["onset_doy"] is None:
