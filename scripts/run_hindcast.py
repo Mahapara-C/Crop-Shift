@@ -347,7 +347,6 @@ def section_onset(res):
     confirmed = raw.copy()
     confirmed.loc[confirmed["unconfirmed"], "onset_doy"] = np.nan
     summ = onset_shift_summary(confirmed, default=(20.0, 450.0))
-    summ_raw = onset_shift_summary(raw, default=(20.0, 450.0))
     n_unconf = raw.groupby(["min_week_mm", "confirm_mm"])["unconfirmed"].sum()
     lines = ["| 7-day total (mm) | 30-day total (mm) | confirmed onsets found | "
              "unconfirmed 25-31 Oct onsets | median onset | median shift vs default (days) | "
@@ -364,8 +363,7 @@ def section_onset(res):
                      f"{fmt(r['max_abs_shift'], 0)} |")
     non_default = summ[~((summ["min_week_mm"] == 20.0) & (summ["confirm_mm"] == 450.0))]
     return {"table": "\n".join(lines), "min_shift": non_default["mean_abs_shift"].min(),
-            "max_shift": non_default["mean_abs_shift"].max(),
-            "max_raw": summ_raw["max_abs_shift"].max()}
+            "max_shift": non_default["mean_abs_shift"].max()}
 
 
 def section_trends(res, tr, period):
@@ -532,8 +530,8 @@ The POWER record was extended back to 1981 in task 5a. The early years look diff
 "Confirmed onset" = `rain_onset()` found an onset that passed its dry-spell and 30-day
 checks. Years with **no onset at all** by 31 Oct (left out of the analog methods):
 {missing_years}. Years whose analog features rest on an **unconfirmed 25-31 Oct onset**
-(a wet week too close to the 31 Oct cutoff for `rain_onset()` to check; see section 3):
-{unconfirmed_years}.
+(a wet week too close to the 31 Oct cutoff for `rain_onset()` to check; it now rejects these,
+so this is a check that should read "none"; see section 3): {unconfirmed_years}.
 
 Most {EARLY[0]}-{EARLY[1]} years never reach 450 mm in 30 days in POWER rain. Either the early
 monsoons really were much weaker or, more likely, the rain record is not consistent over
@@ -629,11 +627,10 @@ a confirmed onset (+ = later).
   {on['max_shift']:.1f} days. The 7-day threshold barely matters; the 30-day confirmation
   total moves onset by weeks. Onset day is one of the four analog features, so this choice
   changes which years are picked as analogs.
-- **Edge case in `rain_onset()`** (not changed in this task): when fewer than 7 days follow
-  a wet week, i.e. a week ending 25-31 Oct with a 31 Oct cutoff, it is accepted **without**
-  the dry-spell and 30-day checks. These "unconfirmed" onsets are counted separately above and
-  left out of the shifts; counting them, one setting can move a year's onset by up to
-  {on['max_raw']:.0f} days (May under one setting, late October under another).
+- **Edge case in `rain_onset()`, now fixed:** a wet week with fewer than 7 days after it,
+  i.e. a week ending 25-31 Oct with a 31 Oct cutoff, used to be accepted as the onset
+  **without** the dry-spell and 30-day checks. It is now rejected (not an onset), so the
+  "unconfirmed 25-31 Oct onsets" column is kept only as a check and should be 0 in every row.
 
 ## 4. Trends
 

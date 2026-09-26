@@ -27,6 +27,10 @@ def rain_onset(daily_rainfall, year, min_week_mm=20.0, dry_spell_days=7,
     threshold — a real gradual-onset pattern, not a data gap. Such years
     are simply excluded from nearest_analog_year()'s candidate pool.
 
+    A window with fewer than dry_spell_days days of data after it (the
+    last days before a decision_date cutoff) can't be checked, so it is
+    never accepted as the onset.
+
     Parameters
     ----------
     daily_rainfall : pd.Series
@@ -50,18 +54,20 @@ def rain_onset(daily_rainfall, year, min_week_mm=20.0, dry_spell_days=7,
             follow_period = daily_rainfall.iloc[check_start:check_end]
             follow_dry = is_dry_day.iloc[check_start:check_end]
 
+            # Too few days follow this window to check it (e.g. a wet week
+            # just before build_feature_table()'s decision_date cutoff):
+            # it can't be confirmed, so it is not an onset.
             if len(follow_period) < dry_spell_days:
-                is_false_start = False
-            else:
-                longest_dry_run = (
-                    follow_dry.groupby((~follow_dry).cumsum()).cumsum().max()
-                    if follow_dry.any() else 0
-                )
-                no_long_dry_gap = longest_dry_run < dry_spell_days
-                sustained_rain = follow_period.sum() >= min_confirm_total_mm
-                is_false_start = not (no_long_dry_gap and sustained_rain)
+                continue
 
-            if not is_false_start:
+            longest_dry_run = (
+                follow_dry.groupby((~follow_dry).cumsum()).cumsum().max()
+                if follow_dry.any() else 0
+            )
+            no_long_dry_gap = longest_dry_run < dry_spell_days
+            sustained_rain = follow_period.sum() >= min_confirm_total_mm
+
+            if no_long_dry_gap and sustained_rain:
                 onset_date = daily_rainfall.index[i]
                 return {
                     "year": year,

@@ -18,26 +18,26 @@ average, below 0 is worse. **Bold** = p < 0.05, in either direction.
 
 | Outcome | 1 nearest analog | mean of 5 nearest analogs | ENSO-phase average |
 |---|---|---|---|
-| Rabi rain, Nov-Apr (mm) | **-0.41 (57/141, p=0.03)** | -0.08 (71/141, p=1.00) | **-0.01 (54/141, p=0.007)** |
-| Mustard net irrigation (mm) | -0.06 (70/138, p=0.93) | +0.01 (63/138, p=0.35) | **+0.06 (85/138, p=0.008)** |
-| Mustard rainfed water-stress days (days) | -0.27 (58/138, p=0.09) | -0.01 (69/138, p=1.00) | -0.04 (70/138, p=0.93) |
-| Wheat net irrigation (mm) | -0.18 (70/138, p=0.93) | -0.03 (62/138, p=0.27) | -0.06 (61/138, p=0.20) |
-| Wheat rainfed water-stress days (days) | -0.25 (61/138, p=0.20) | -0.04 (69/138, p=1.00) | -0.04 (59/138, p=0.11) |
+| Rabi rain, Nov-Apr (mm) | **-0.41 (44/120, p=0.004)** | -0.08 (63/120, p=0.65) | +0.01 (53/120, p=0.24) |
+| Mustard net irrigation (mm) | +0.02 (60/117, p=0.85) | -0.01 (57/117, p=0.85) | +0.03 (67/117, p=0.14) |
+| Mustard rainfed water-stress days (days) | **-0.43 (43/117, p=0.007)** | -0.08 (52/117, p=0.27) | -0.08 (52/117, p=0.27) |
+| Wheat net irrigation (mm) | -0.15 (60/117, p=0.85) | -0.05 (55/117, p=0.58) | **-0.11 (45/117, p=0.02)** |
+| Wheat rainfed water-stress days (days) | **-0.40 (40/117, p<0.001)** | -0.07 (52/117, p=0.27) | **-0.07 (43/117, p=0.005)** |
 
 **Robustness check: seasons 2001-2025 only** (analogs, averages and scaling use only these seasons):
 
 | Outcome | 1 nearest analog | mean of 5 nearest analogs | ENSO-phase average |
 |---|---|---|---|
-| Rabi rain, Nov-Apr (mm) | **-0.32 (30/97, p<0.001)** | -0.00 (51/97, p=0.68) | -0.03 (44/97, p=0.42) |
-| Mustard net irrigation (mm) | +0.08 (55/97, p=0.22) | -0.05 (42/97, p=0.22) | -0.03 (55/97, p=0.22) |
-| Mustard rainfed water-stress days (days) | **-0.24 (38/97, p=0.04)** | -0.02 (44/97, p=0.42) | **-0.07 (38/97, p=0.04)** |
-| Wheat net irrigation (mm) | +0.01 (53/97, p=0.42) | +0.03 (51/97, p=0.68) | -0.05 (51/97, p=0.68) |
-| Wheat rainfed water-stress days (days) | **-0.40 (31/97, p<0.001)** | -0.07 (41/97, p=0.15) | **-0.10 (38/97, p=0.04)** |
+| Rabi rain, Nov-Apr (mm) | **-0.32 (30/94, p<0.001)** | +0.02 (56/94, p=0.08) | -0.02 (44/94, p=0.61) |
+| Mustard net irrigation (mm) | -0.02 (49/94, p=0.76) | -0.05 (43/94, p=0.47) | -0.03 (52/94, p=0.35) |
+| Mustard rainfed water-stress days (days) | **-0.33 (33/94, p=0.005)** | -0.02 (40/94, p=0.18) | **-0.08 (36/94, p=0.03)** |
+| Wheat net irrigation (mm) | +0.02 (52/94, p=0.35) | +0.02 (46/94, p=0.92) | -0.06 (48/94, p=0.92) |
+| Wheat rainfed water-stress days (days) | **-0.43 (28/94, p<0.001)** | -0.06 (39/94, p=0.12) | -0.10 (38/94, p=0.08) |
 
 ## What this means for CropShift
 
-- **Nothing tested reliably beats the long-term average.** The only pooled win does not hold up in the 2001-2025 check: ENSO-phase average for mustard net irrigation: skill +0.06 (p=0.008) over all seasons, -0.03 (p=0.22) over 2001-2025. Every other method-outcome pair is within chance of the long-term average or worse.
-- **The single nearest analog year (the "field twin") is worse than the long-term average** for every outcome over all seasons (pooled skill -0.41 to -0.06). It is significantly worse than the long-term average for mustard rainfed water-stress days; rabi rain, Nov-Apr; wheat rainfed water-stress days in at least one period. The mean of 5 analogs scores -0.08 to +0.01. This backs CropShift's rule: the field twin is shown as an **example** of a past season, never as a guide to this one, and is not used in the ranking.
+- **Nothing tested beats the long-term average.** Pooled over the four districts, no method is closer in a significant majority of seasons; the best pooled skill is +0.03 (1 = perfect, 0 = no better than the long-term average).
+- **The single nearest analog year (the "field twin") does not beat the long-term average** over all seasons (pooled skill -0.43 to +0.02). It is significantly worse than the long-term average for mustard rainfed water-stress days; rabi rain, Nov-Apr; wheat rainfed water-stress days in at least one period. The mean of 5 analogs scores -0.08 to -0.01. This backs CropShift's rule: the field twin is shown as an **example** of a past season, never as a guide to this one, and is not used in the ranking.
 - **Keep ranking on the spread of past years** ("problems in X of N years", average and worst 20%), not on one analog year or an ENSO average: the long-term average is the benchmark nothing here beats. **But check the early years first.** In NASA POWER, mean Jun-Sep rain over the four districts is 1068 mm in 1981-2000 and 1907 mm in 2001-2025, and most 1981-2000 years have no confirmed monsoon onset (see the data consistency check). Until the POWER rain is checked against GPM IMERG or BMD station data, count problem years over 2001-2025, or show the two periods separately.
 - **El Niño lens (context, not forecast):** differences with p < 0.05 in the 4-district mean: mustard net irrigation -63 mm (difference of medians, p=0.04, n = 11 El Niño vs 31 other seasons). With 7 outcomes tested, one p < 0.05 could appear by chance. Show it only with n and the label "context, not forecast"; do not use it in the ranking.
 - **Trends (4-district mean, p < 0.05):** 1981-2025: rabi rain +53.9 mm/decade (p=0.002); Jun-Sep rain +325.5 mm/decade (p<0.001); Mar-May mean Tmax -0.6 °C/decade (p<0.001); mustard irrigation -22.8 mm/decade (p<0.001). 2001-2025 only: Jun-Sep rain +457.9 mm/decade (p<0.001). Mean Jun-Sep rain is 1.8 times higher in 2001-2025 than in 1981-2000; a change that large is not a plausible climate signal, so do **not** quote these trends (or the Tmax fall that may go with them) as climate change. They point to a consistency problem in the POWER record to check first.
@@ -57,9 +57,9 @@ The POWER record was extended back to 1981 in task 5a. The early years look diff
 
 "Confirmed onset" = `rain_onset()` found an onset that passed its dry-spell and 30-day
 checks. Years with **no onset at all** by 31 Oct (left out of the analog methods):
-Cumilla: 1981, 1982, 1983, 1985, 1986, 1990, 1992, 1993, 1994, 1995, 2012; Noakhali: 1981, 1982, 1983, 1985, 1986, 1990, 1992, 1993, 1994, 1995; Feni: 1981, 1982, 1983, 1985, 1986, 1990, 1992, 1993, 1994, 1995; Brahmanbaria: 1981, 1982, 1983, 1985, 1986, 1990, 1992, 1993, 1994, 1995, 2011, 2012; Sylhet: 1986, 1990, 1991, 1992, 1993, 1994. Years whose analog features rest on an **unconfirmed 25-31 Oct onset**
-(a wet week too close to the 31 Oct cutoff for `rain_onset()` to check; see section 3):
-Cumilla: 1984, 1987, 1989, 1991, 1996, 2005; Noakhali: 1984, 1987, 1989, 1991, 1996; Feni: 1984, 1987, 1989, 1991, 1996; Brahmanbaria: 1984, 1987, 1989, 1991, 1996, 2005, 2008; Sylhet: 1985, 1989, 1996.
+Cumilla: 1981, 1982, 1983, 1984, 1985, 1986, 1987, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 2005, 2012; Noakhali: 1981, 1982, 1983, 1984, 1985, 1986, 1987, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996; Feni: 1981, 1982, 1983, 1984, 1985, 1986, 1987, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996; Brahmanbaria: 1981, 1982, 1983, 1984, 1985, 1986, 1987, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 2005, 2008, 2011, 2012; Sylhet: 1985, 1986, 1989, 1990, 1991, 1992, 1993, 1994, 1996. Years whose analog features rest on an **unconfirmed 25-31 Oct onset**
+(a wet week too close to the 31 Oct cutoff for `rain_onset()` to check; it now rejects these,
+so this is a check that should read "none"; see section 3): Cumilla: none; Noakhali: none; Feni: none; Brahmanbaria: none; Sylhet: none.
 
 Most 1981-2000 years never reach 450 mm in 30 days in POWER rain. Either the early
 monsoons really were much weaker or, more likely, the rain record is not consistent over
@@ -108,56 +108,56 @@ Cells as in "At a glance". MAE of the long-term average is in the outcome's unit
 
 | District | seasons scored | MAE, long-term average | 1 nearest analog | mean of 5 nearest analogs | ENSO-phase average |
 |---|---|---|---|---|---|
-| Cumilla | 34 | 114 | -0.26 (17/34, p=1.00) | -0.09 (16/34, p=0.86) | -0.02 (15/34, p=0.61) |
-| Feni | 35 | 123 | -0.07 (16/35, p=0.74) | -0.01 (19/35, p=0.74) | **-0.05 (8/35, p=0.002)** |
-| Brahmanbaria | 33 | 128 | -0.33 (12/33, p=0.16) | -0.03 (18/33, p=0.73) | +0.03 (18/33, p=0.73) |
-| Sylhet | 39 | 202 | **-0.73 (12/39, p=0.02)** | -0.15 (18/39, p=0.75) | +0.00 (13/39, p=0.05) |
-| **Pooled (4 districts)** | 141 | 144 | **-0.41 (57/141, p=0.03)** | -0.08 (71/141, p=1.00) | **-0.01 (54/141, p=0.007)** |
-| Noakhali (Feni's cell; not pooled) | 35 | 123 | -0.07 (16/35, p=0.74) | -0.01 (19/35, p=0.74) | **-0.05 (8/35, p=0.002)** |
+| Cumilla | 28 | 122 | -0.38 (13/28, p=0.85) | -0.11 (13/28, p=0.85) | +0.00 (15/28, p=0.85) |
+| Feni | 30 | 129 | -0.36 (11/30, p=0.20) | -0.04 (18/30, p=0.36) | **-0.04 (8/30, p=0.02)** |
+| Brahmanbaria | 26 | 137 | -0.31 (10/26, p=0.33) | -0.04 (13/26, p=1.00) | +0.07 (17/26, p=0.17) |
+| Sylhet | 36 | 205 | **-0.50 (10/36, p=0.01)** | -0.12 (19/36, p=0.87) | +0.01 (13/36, p=0.13) |
+| **Pooled (4 districts)** | 120 | 152 | **-0.41 (44/120, p=0.004)** | -0.08 (63/120, p=0.65) | +0.01 (53/120, p=0.24) |
+| Noakhali (Feni's cell; not pooled) | 30 | 129 | -0.36 (11/30, p=0.20) | -0.04 (18/30, p=0.36) | **-0.04 (8/30, p=0.02)** |
 
 #### Mustard net irrigation (mm)
 
 | District | seasons scored | MAE, long-term average | 1 nearest analog | mean of 5 nearest analogs | ENSO-phase average |
 |---|---|---|---|---|---|
-| Cumilla | 34 | 50 | -0.12 (14/34, p=0.39) | +0.04 (18/34, p=0.86) | +0.05 (21/34, p=0.23) |
-| Feni | 35 | 56 | -0.06 (16/35, p=0.74) | +0.13 (18/35, p=1.00) | +0.05 (21/35, p=0.31) |
-| Brahmanbaria | 33 | 42 | -0.13 (20/33, p=0.30) | -0.17 (11/33, p=0.08) | +0.02 (21/33, p=0.16) |
-| Sylhet | 36 | 47 | +0.08 (20/36, p=0.62) | -0.00 (16/36, p=0.62) | +0.11 (22/36, p=0.24) |
-| **Pooled (4 districts)** | 138 | 49 | -0.06 (70/138, p=0.93) | +0.01 (63/138, p=0.35) | **+0.06 (85/138, p=0.008)** |
-| Noakhali (Feni's cell; not pooled) | 35 | 48 | -0.08 (18/35, p=1.00) | +0.09 (21/35, p=0.31) | +0.02 (23/35, p=0.09) |
+| Cumilla | 28 | 50 | -0.18 (10/28, p=0.18) | +0.06 (17/28, p=0.34) | +0.02 (16/28, p=0.57) |
+| Feni | 30 | 51 | +0.14 (16/30, p=0.86) | +0.09 (17/30, p=0.58) | +0.02 (17/30, p=0.58) |
+| Brahmanbaria | 26 | 44 | -0.08 (15/26, p=0.56) | -0.27 (9/26, p=0.17) | -0.01 (15/26, p=0.56) |
+| Sylhet | 33 | 44 | +0.15 (19/33, p=0.49) | +0.01 (14/33, p=0.49) | +0.09 (19/33, p=0.49) |
+| **Pooled (4 districts)** | 117 | 47 | +0.02 (60/117, p=0.85) | -0.01 (57/117, p=0.85) | +0.03 (67/117, p=0.14) |
+| Noakhali (Feni's cell; not pooled) | 30 | 45 | +0.05 (16/30, p=0.86) | -0.05 (16/30, p=0.86) | -0.02 (19/30, p=0.20) |
 
 #### Mustard rainfed water-stress days (days)
 
 | District | seasons scored | MAE, long-term average | 1 nearest analog | mean of 5 nearest analogs | ENSO-phase average |
 |---|---|---|---|---|---|
-| Cumilla | 34 | 10.3 | -0.42 (15/34, p=0.73) | +0.00 (17/34, p=1.00) | -0.06 (17/34, p=1.00) |
-| Feni | 35 | 9.6 | -0.19 (13/35, p=0.18) | +0.08 (17/35, p=1.00) | -0.05 (16/35, p=0.74) |
-| Brahmanbaria | 33 | 10.4 | -0.34 (14/33, p=0.49) | -0.07 (17/33, p=1.00) | -0.05 (17/33, p=1.00) |
-| Sylhet | 36 | 10.8 | -0.13 (16/36, p=0.62) | -0.05 (18/36, p=1.00) | +0.01 (20/36, p=0.62) |
-| **Pooled (4 districts)** | 138 | 10.3 | -0.27 (58/138, p=0.09) | -0.01 (69/138, p=1.00) | -0.04 (70/138, p=0.93) |
-| Noakhali (Feni's cell; not pooled) | 35 | 8.9 | -0.22 (13/35, p=0.18) | +0.06 (16/35, p=0.74) | -0.06 (16/35, p=0.74) |
+| Cumilla | 28 | 9.5 | -0.66 (9/28, p=0.12) | -0.10 (11/28, p=0.34) | -0.12 (12/28, p=0.57) |
+| Feni | 30 | 8.9 | -0.29 (13/30, p=0.58) | -0.03 (13/30, p=0.58) | -0.09 (12/30, p=0.36) |
+| Brahmanbaria | 26 | 9.9 | -0.56 (9/26, p=0.17) | -0.18 (10/26, p=0.33) | -0.12 (11/26, p=0.56) |
+| Sylhet | 33 | 10.7 | -0.27 (12/33, p=0.16) | -0.01 (18/33, p=0.73) | -0.02 (17/33, p=1.00) |
+| **Pooled (4 districts)** | 117 | 9.8 | **-0.43 (43/117, p=0.007)** | -0.08 (52/117, p=0.27) | -0.08 (52/117, p=0.27) |
+| Noakhali (Feni's cell; not pooled) | 30 | 8.3 | -0.31 (12/30, p=0.36) | -0.06 (13/30, p=0.58) | -0.11 (12/30, p=0.36) |
 
 #### Wheat net irrigation (mm)
 
 | District | seasons scored | MAE, long-term average | 1 nearest analog | mean of 5 nearest analogs | ENSO-phase average |
 |---|---|---|---|---|---|
-| Cumilla | 34 | 61 | -0.31 (15/34, p=0.61) | +0.07 (20/34, p=0.39) | -0.03 (19/34, p=0.61) |
-| Feni | 35 | 59 | -0.06 (17/35, p=1.00) | +0.12 (20/35, p=0.50) | -0.04 (20/35, p=0.50) |
-| Brahmanbaria | 33 | 55 | -0.33 (16/33, p=1.00) | -0.18 (11/33, p=0.08) | **-0.09 (10/33, p=0.04)** |
-| Sylhet | 36 | 47 | -0.02 (22/36, p=0.24) | **-0.17 (11/36, p=0.03)** | -0.09 (12/36, p=0.07) |
-| **Pooled (4 districts)** | 138 | 55 | -0.18 (70/138, p=0.93) | -0.03 (62/138, p=0.27) | -0.06 (61/138, p=0.20) |
-| Noakhali (Feni's cell; not pooled) | 35 | 50 | +0.08 (20/35, p=0.50) | +0.08 (17/35, p=1.00) | -0.16 (13/35, p=0.18) |
+| Cumilla | 28 | 59 | -0.21 (14/28, p=1.00) | +0.14 (19/28, p=0.09) | -0.09 (14/28, p=1.00) |
+| Feni | 30 | 56 | +0.07 (15/30, p=1.00) | +0.02 (16/30, p=0.86) | -0.09 (16/30, p=0.86) |
+| Brahmanbaria | 26 | 55 | -0.12 (14/26, p=0.85) | **-0.32 (7/26, p=0.03)** | **-0.14 (6/26, p=0.009)** |
+| Sylhet | 33 | 44 | -0.36 (17/33, p=1.00) | -0.10 (13/33, p=0.30) | **-0.14 (9/33, p=0.01)** |
+| **Pooled (4 districts)** | 117 | 53 | -0.15 (60/117, p=0.85) | -0.05 (55/117, p=0.58) | **-0.11 (45/117, p=0.02)** |
+| Noakhali (Feni's cell; not pooled) | 30 | 44 | +0.02 (15/30, p=1.00) | -0.03 (12/30, p=0.36) | **-0.28 (9/30, p=0.04)** |
 
 #### Wheat rainfed water-stress days (days)
 
 | District | seasons scored | MAE, long-term average | 1 nearest analog | mean of 5 nearest analogs | ENSO-phase average |
 |---|---|---|---|---|---|
-| Cumilla | 34 | 15.5 | -0.27 (18/34, p=0.86) | +0.01 (17/34, p=1.00) | -0.03 (13/34, p=0.23) |
-| Feni | 35 | 15.1 | -0.17 (15/35, p=0.50) | +0.00 (19/35, p=0.74) | -0.03 (14/35, p=0.31) |
-| Brahmanbaria | 33 | 14.5 | -0.48 (13/33, p=0.30) | -0.05 (18/33, p=0.73) | -0.02 (17/33, p=1.00) |
-| Sylhet | 36 | 13.4 | -0.07 (15/36, p=0.41) | -0.13 (15/36, p=0.41) | -0.06 (15/36, p=0.41) |
-| **Pooled (4 districts)** | 138 | 14.6 | -0.25 (61/138, p=0.20) | -0.04 (69/138, p=1.00) | -0.04 (59/138, p=0.11) |
-| Noakhali (Feni's cell; not pooled) | 35 | 14.4 | -0.20 (15/35, p=0.50) | -0.01 (19/35, p=0.74) | -0.03 (14/35, p=0.31) |
+| Cumilla | 28 | 15.8 | -0.50 (9/28, p=0.09) | -0.01 (12/28, p=0.57) | -0.06 (9/28, p=0.09) |
+| Feni | 30 | 15.0 | -0.27 (10/30, p=0.10) | -0.12 (14/30, p=0.86) | -0.06 (11/30, p=0.20) |
+| Brahmanbaria | 26 | 14.9 | -0.43 (9/26, p=0.17) | -0.11 (14/26, p=0.85) | -0.06 (11/26, p=0.56) |
+| Sylhet | 33 | 13.3 | -0.41 (12/33, p=0.16) | -0.04 (12/33, p=0.16) | -0.08 (12/33, p=0.16) |
+| **Pooled (4 districts)** | 117 | 14.7 | **-0.40 (40/117, p<0.001)** | -0.07 (52/117, p=0.27) | **-0.07 (43/117, p=0.005)** |
+| Noakhali (Feni's cell; not pooled) | 30 | 14.4 | **-0.31 (9/30, p=0.04)** | -0.13 (14/30, p=0.86) | -0.05 (11/30, p=0.20) |
 
 ## 2. El Niño lens: context, not forecast
 
@@ -223,25 +223,24 @@ a confirmed onset (+ = later).
 
 | 7-day total (mm) | 30-day total (mm) | confirmed onsets found | unconfirmed 25-31 Oct onsets | median onset | median shift vs default (days) | mean absolute shift (days) | largest absolute shift (days) |
 |---|---|---|---|---|---|---|---|
-| 15 | 350 | 152 of 180 | 10 | 05 May | -8 | 13.3 | 86 |
-| 15 | 450 | 120 of 180 | 23 | 15 May | +0 | 0.5 | 17 |
-| 15 | 550 | 96 of 180 | 42 | 16 May | +8 | 11.3 | 104 |
-| 20 | 350 | 152 of 180 | 9 | 05 May | -7 | 12.3 | 86 |
-| **20** | **450** (default) | 120 of 180 | 21 | 15 May | +0 | 0.0 | 0 |
-| 20 | 550 | 95 of 180 | 40 | 16 May | +9 | 11.3 | 104 |
-| 25 | 350 | 152 of 180 | 9 | 05 May | -7 | 12.1 | 86 |
-| 25 | 450 | 120 of 180 | 18 | 16 May | +0 | 0.6 | 19 |
-| 25 | 550 | 95 of 180 | 36 | 16 May | +9 | 11.5 | 104 |
+| 15 | 350 | 152 of 180 | 0 | 05 May | -8 | 13.3 | 86 |
+| 15 | 450 | 120 of 180 | 0 | 15 May | +0 | 0.5 | 17 |
+| 15 | 550 | 96 of 180 | 0 | 16 May | +8 | 11.3 | 104 |
+| 20 | 350 | 152 of 180 | 0 | 05 May | -7 | 12.3 | 86 |
+| **20** | **450** (default) | 120 of 180 | 0 | 15 May | +0 | 0.0 | 0 |
+| 20 | 550 | 95 of 180 | 0 | 16 May | +9 | 11.3 | 104 |
+| 25 | 350 | 152 of 180 | 0 | 05 May | -7 | 12.1 | 86 |
+| 25 | 450 | 120 of 180 | 0 | 16 May | +0 | 0.6 | 19 |
+| 25 | 550 | 95 of 180 | 0 | 16 May | +9 | 11.5 | 104 |
 
 - Across the eight non-default settings the mean absolute shift is 0.5 to
   13.3 days. The 7-day threshold barely matters; the 30-day confirmation
   total moves onset by weeks. Onset day is one of the four analog features, so this choice
   changes which years are picked as analogs.
-- **Edge case in `rain_onset()`** (not changed in this task): when fewer than 7 days follow
-  a wet week, i.e. a week ending 25-31 Oct with a 31 Oct cutoff, it is accepted **without**
-  the dry-spell and 30-day checks. These "unconfirmed" onsets are counted separately above and
-  left out of the shifts; counting them, one setting can move a year's onset by up to
-  186 days (May under one setting, late October under another).
+- **Edge case in `rain_onset()`, now fixed:** a wet week with fewer than 7 days after it,
+  i.e. a week ending 25-31 Oct with a 31 Oct cutoff, used to be accepted as the onset
+  **without** the dry-spell and 30-day checks. It is now rejected (not an onset), so the
+  "unconfirmed 25-31 Oct onsets" column is kept only as a check and should be 0 in every row.
 
 ## 4. Trends
 
