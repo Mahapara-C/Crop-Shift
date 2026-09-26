@@ -37,6 +37,7 @@ CropShift is Team Regolith's entry for NASA Space Apps 2026, Challenge 7, "Field
 - **Feni and Noakhali share one POWER weather cell.** Don't claim a contrast between them (fix planned: GPM IMERG).
 - OPERA DSWx-S1 exists over Feni/Cumilla from 21 Aug 2024 only.
 - Researched values: `data/reference/*.csv` with the columns `item,value,unit,source_title,source_url,page,year,notes`. No source means no row.
+- POWER rain before 2001 is not consistent with later years; recommendations, rankings and trends use 2001-2025 only. 1981-2000 is appendix-only until checked against another rain record.
 
 ## Task order (one per session; each with tests; commit on a branch and open a PR)
 1. `src/agents/guard.py`: extract numbers (including Bangla digits ০–৯) and allow a number only if it matches a cited tool-result value (with rounding tolerance). Tests must include **a fabricated number being blocked**.
