@@ -77,3 +77,38 @@ def test_short_warm_run_between_two_short_cold_runs_stays_neutral():
     result = label_enso_years(make_oni(seasons, years, anoms))
     assert result[1997] == "neutral"
     assert result[1998] == "neutral"
+
+
+# ---------------- season_enso_labels (Oct 31 decision label) ----------------
+
+from enso import classify_oni, season_enso_labels  # noqa: E402
+
+
+def test_classify_oni_thresholds():
+    assert classify_oni(1.5) == "strong_el_nino"
+    assert classify_oni(1.49) == "el_nino"
+    assert classify_oni(0.5) == "el_nino"
+    assert classify_oni(0.49) == "neutral"
+    assert classify_oni(-0.49) == "neutral"
+    assert classify_oni(-0.5) == "la_nina"
+    assert classify_oni(float("nan")) is None
+
+
+def test_season_label_uses_only_the_aso_value():
+    """Later seasons (SON, OND) are hot, but only ASO counts for Oct 31."""
+    seasons = ["JAS", "ASO", "SON", "OND", "ASO"]
+    years =   [2015,  2015,  2015,  2015,  2016]
+    anoms =   [0.2,   0.3,   1.8,   2.2,   -0.7]
+    labels = season_enso_labels(make_oni(seasons, years, anoms))
+    assert labels.loc[2015, "oni"] == 0.3
+    assert labels.loc[2015, "label"] == "neutral"
+    assert labels.loc[2016, "label"] == "la_nina"
+    assert list(labels.index) == [2015, 2016]
+
+
+def test_strong_el_nino_phase_is_el_nino():
+    labels = season_enso_labels(make_oni(["ASO", "ASO"], [1997, 2002], [2.1, 0.9]))
+    assert labels.loc[1997, "label"] == "strong_el_nino"
+    assert labels.loc[1997, "phase"] == "el_nino"
+    assert labels.loc[2002, "label"] == "el_nino"
+    assert labels.loc[2002, "phase"] == "el_nino"

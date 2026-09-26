@@ -6,6 +6,10 @@ series (data/reference/oni.csv), using the standard CPC rule: an episode
 is at least 5 consecutive overlapping (3-month) seasons with the ONI
 anomaly >= +0.5 (El Nino) or <= -0.5 (La Nina). Deterministic, no AI
 involvement.
+
+season_enso_labels() is a second, simpler labeller for the rabi hindcast:
+one label per year from a single ONI season (default ASO), so it uses only
+what is known by the Oct 31 decision date.
 """
 
 import pandas as pd
@@ -13,6 +17,7 @@ import pandas as pd
 WARM_THRESHOLD = 0.5
 COLD_THRESHOLD = -0.5
 MIN_SEASONS = 5
+STRONG_WARM_THRESHOLD = 1.5
 
 
 def _episode_years(years, is_event, min_seasons):
@@ -69,3 +74,38 @@ def label_enso_years(oni_df, warm_threshold=WARM_THRESHOLD, cold_threshold=COLD_
             labels[yr] = "neutral"
 
     return pd.Series(labels, name="enso_phase")
+
+
+def classify_oni(anom, warm_threshold=WARM_THRESHOLD, strong_threshold=STRONG_WARM_THRESHOLD,
+                 cold_threshold=COLD_THRESHOLD):
+    """One ONI value -> 'strong_el_nino' (>= +1.5), 'el_nino' (>= +0.5),
+    'la_nina' (<= -0.5) or 'neutral'. None for a missing value."""
+    if pd.isna(anom):
+        return None
+    if anom >= strong_threshold:
+        return "strong_el_nino"
+    if anom >= warm_threshold:
+        return "el_nino"
+    if anom <= cold_threshold:
+        return "la_nina"
+    return "neutral"
+
+
+def season_enso_labels(oni_df, season="ASO"):
+    """
+    Labels each year from that year's single ONI `season` value (default
+    ASO = Aug-Sep-Oct, whose SSTs are all observed by Oct 31, the rabi
+    decision date). Unlike label_enso_years() it never looks at later
+    seasons, so it can be used for a decision made on Oct 31.
+
+    Returns a DataFrame indexed by year with columns oni (the anomaly),
+    label (classify_oni) and phase (label with strong_el_nino merged into
+    el_nino: 'el_nino' / 'neutral' / 'la_nina').
+    """
+    rows = oni_df[oni_df["season"] == season]
+    out = pd.DataFrame({"oni": rows["anom"].astype(float).values},
+                       index=rows["year"].astype(int).values)
+    out.index.name = "year"
+    out["label"] = out["oni"].map(classify_oni)
+    out["phase"] = out["label"].replace({"strong_el_nino": "el_nino"})
+    return out
