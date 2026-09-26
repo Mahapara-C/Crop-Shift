@@ -11,6 +11,7 @@ Run from the repo root, e.g.:
 import os
 import sys
 import requests
+import numpy as np
 import pandas as pd
 
 DISTRICTS = {
@@ -34,18 +35,19 @@ COLUMNS = {
 }
 
 URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
+START_DATE = "20010101"
 END_DATE = "20260831"  # latest month safely available; SMAP runs to 2026-09-20
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
 
 
-def fetch(district):
+def fetch(district, start_date=START_DATE):
     coords = DISTRICTS[district]
     params = {
         "parameters": ",".join(COLUMNS.keys()),
         "community": "AG",
         "longitude": coords["lon"],
         "latitude": coords["lat"],
-        "start": "20010101",
+        "start": start_date,
         "end": END_DATE,
         "format": "JSON",
     }
@@ -59,13 +61,25 @@ def fetch(district):
     df = df.rename(columns=COLUMNS)[list(COLUMNS.values())]
 
     missing = int((df == -999).sum().sum())
+    df = df.replace(-999, np.nan)
     elevation = data["geometry"]["coordinates"][2]
 
     out_path = os.path.abspath(os.path.join(OUT_DIR, f"power_{district}_daily.csv"))
     df.to_csv(out_path)
-    print(f"{district}: {len(df)} rows, {missing} missing values, "
+
+    first_real = {}
+    for col in df.columns:
+        valid = df[col].dropna()
+        first_real[col] = str(valid.index[0].date()) if len(valid) else None
+
+    print(f"{district}: {len(df)} rows, {missing} missing values (converted to NaN), "
           f"elevation {elevation} m -> {out_path}")
+    for col, date in first_real.items():
+        print(f"  {col}: first real value on {date}")
+
+    return first_real
 
 
 if __name__ == "__main__":
-    fetch(sys.argv[1])
+    start = sys.argv[2] if len(sys.argv) > 2 else START_DATE
+    fetch(sys.argv[1], start_date=start)

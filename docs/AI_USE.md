@@ -120,6 +120,34 @@ non-resolving URL and a temp cache/fixture dir (no real network), covering
 the fixture fallback, the cache fallback, the no-data-at-all error, the
 `OFFLINE` flag, and the stale-cache last resort.
 
+**Claude Code** — Task 5a, extended the historical record back to 1981 and
+added ENSO context. Gave `src/acquire/fetch_power.py` an optional
+`start_date` argument (default unchanged at `20010101`) and re-downloaded
+all 5 districts from 1981-01-01 to 2026-08-31; POWER's `-999` missing-value
+sentinel is now converted to `NaN` rather than left as a magic number, and
+no gap is filled. All 7 weather columns have real data from 1981-01-01
+except `solar_rad_mj_m2`, which starts 1984-01-01 in every district (later
+than the ~mid-1983 estimate in the task brief; reported as found, not
+adjusted to match the estimate). Wrote `scripts/fetch_oni.py`, which
+downloads NOAA CPC's ONI ascii table and saves
+`data/reference/oni.csv` (919 rows, 1950-2026, columns `season, year,
+total, anom, source_title, source_url`). Wrote `src/compute/enso.py`
+(`label_enso_years()`): the standard CPC rule — an episode is >=5
+consecutive overlapping 3-month seasons with anomaly >=+0.5 (El Nino) or
+<=-0.5 (La Nina) — applied to the ONI series to label every year. Found
+and fixed a bug in its own first implementation during manual verification
+against the real ONI series: grouping consecutive True/False runs with
+`(~is_event).cumsum()` merges the boundary False row into the next run,
+so any event run not starting at row 0 of the series was silently
+dropped — caught because the real data returned zero El Nino/La Nina years
+where several are well known (1982-83, 1997-98, 2015-16, 2023-24), while
+the hand-written unit tests had (accidentally) all placed their event runs
+at the start of the tiny test series and so didn't catch it. Fixed with
+the standard change-point method (`is_event != is_event.shift()`) and
+added a regression test with a run that starts mid-series. `build_feature_table()`'s
+default years are unchanged (2001-2025); `python -m pytest src -q` passes
+(74 tests) with no changes to any existing test's expected values.
+
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA SMAP (via AppEEARS),
 and FAO-56 (Allen et al., 1998) reference values — see README and inline
