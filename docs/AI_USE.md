@@ -62,6 +62,17 @@ pre-2015 SMAP refusal. Also moved a `candidate_years` explanation that had
 been left in `eto_penman_monteith()`'s docstring into
 `nearest_analog_year()`'s, where that parameter actually lives.
 
+**Claude Code** — gave `eto_penman_monteith()` a second, more accurate path
+for actual vapour pressure: when the row carries `rh_max_pct`/`rh_min_pct`,
+`ea` is computed from those separately (FAO-56 Eq.17); otherwise it falls
+back to the existing RH-mean method (FAO-56 Eq.19), which is what NASA
+POWER's single daily RH2M value requires. Replaced the old single Example
+18 test with two: one feeding RHmax=84/RHmin=63 through the new Eq.17 path
+(matches FAO-56's published 3.9 mm/day within ±0.1), and one feeding
+RHmean=73.5% through the Eq.19 fallback (documented as validating the
+function's own arithmetic at 3.79 mm/day, not the published value, per the
+known approximation gap).
+
 **Claude Code** — Task 4, the FAO-56 root-zone water balance. Wrote
 `src/compute/water_balance.py`: FAO-56 Chapter 8 Eq. 82-88 (TAW, RAW,
 Ks, the daily depletion balance, deep percolation), a Kc curve that

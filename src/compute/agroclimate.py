@@ -199,7 +199,12 @@ def eto_penman_monteith(row, day_of_year, latitude_deg, elevation_m):
     Bangladesh climatology.
 
     row : a row with temp_max_c, temp_min_c, temp_mean_c, rh_pct,
-          wind_speed_ms, solar_rad_mj_m2.
+          wind_speed_ms, solar_rad_mj_m2. If the row also carries
+          rh_max_pct and rh_min_pct, actual vapour pressure ea is computed
+          from those separately per FAO-56 Eq.17 (the more accurate path).
+          Otherwise ea falls back to the RH-mean method (FAO-56 Eq.19),
+          which is what NASA POWER's RH2M (a single daily-mean RH) forces
+          us to use for the historical dataset.
           solar_rad_mj_m2 is POWER's ALLSKY_SFC_SW_DWN pulled under the
           "AG" (agroclimatology) community, which is already in MJ/m2/day,
           so no unit conversion is applied. (The "RE" community returns the
@@ -211,7 +216,6 @@ def eto_penman_monteith(row, day_of_year, latitude_deg, elevation_m):
     Returns ET0 in mm/day.
     """
     T_max, T_min, T_mean = row["temp_max_c"], row["temp_min_c"], row["temp_mean_c"]
-    RH = row["rh_pct"]
     u2 = row["wind_speed_ms"]
     Rs = row["solar_rad_mj_m2"]  # already MJ/m2/day under AG community
 
@@ -221,7 +225,19 @@ def eto_penman_monteith(row, day_of_year, latitude_deg, elevation_m):
     def e_sat(T):
         return 0.6108 * np.exp((17.27 * T) / (T + 237.3))
     es = (e_sat(T_max) + e_sat(T_min)) / 2
-    ea = es * (RH / 100.0)
+
+    has_rh_extremes = "rh_max_pct" in row.index and "rh_min_pct" in row.index and \
+        pd.notna(row["rh_max_pct"]) and pd.notna(row["rh_min_pct"])
+    if has_rh_extremes:
+        # FAO-56 Eq.17: ea from RHmax/RHmin separately — more accurate than
+        # the RH-mean approximation below.
+        ea = (e_sat(T_min) * (row["rh_max_pct"] / 100.0) +
+              e_sat(T_max) * (row["rh_min_pct"] / 100.0)) / 2
+    else:
+        # FAO-56 Eq.19: ea from mean RH — the only option NASA POWER's
+        # single RH2M value allows.
+        ea = es * (row["rh_pct"] / 100.0)
+
     delta = (4098 * e_sat(T_mean)) / ((T_mean + 237.3) ** 2)
 
     lat_rad = np.radians(latitude_deg)
