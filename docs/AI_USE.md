@@ -105,6 +105,21 @@ Python tools (Layer 1, `src/compute/`) and narrates their results. This is
 enforced by a provenance gate (`src/agents/guard.py`) that blocks any
 narrated number that doesn't match a cited tool result.
 
+**Claude Code** — moved the project to an online-first design: updated
+`CLAUDE.md` (live → cache → fixture fallback; only the backend fetches
+live data; secrets via env vars only; per-point-per-day cache; every
+response reports `source_mode`) and added Task 7b (live season + live
+flood check for any GPS point in the 5 districts). Wrote
+`src/acquire/safe_fetch.py`: `fetch_json(url, params, cache_key,
+ttl_hours=24)` tries a live GET first, falls back to a per-point cache in
+`cache/` (gitignored) if fresh, then to a checked-in fixture in
+`demo_fixtures/`, then to a stale cache as a last resort so a demo never
+hard-fails if any prior data exists; `OFFLINE=1` skips the live attempt
+entirely. Wrote `src/acquire/test_safe_fetch.py` against a fake
+non-resolving URL and a temp cache/fixture dir (no real network), covering
+the fixture fallback, the cache fallback, the no-data-at-all error, the
+`OFFLINE` flag, and the stale-cache last resort.
+
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA SMAP (via AppEEARS),
 and FAO-56 (Allen et al., 1998) reference values — see README and inline

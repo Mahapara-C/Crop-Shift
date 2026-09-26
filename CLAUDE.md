@@ -2,6 +2,12 @@
 
 CropShift is Team Regolith's entry for NASA Space Apps 2026, Challenge 7, "Field Shift". It helps agriculture officers (SAAOs) and farmers in Cumilla, Feni, Brahmanbaria, Noakhali and Sylhet choose **which crop to plant and when**, with NASA data as the evidence. Event: 13–14 Nov 2026.
 
+## Online-first
+- The app is online-first: live → cache → fixture fallback, in that order. Only the **backend** ever fetches live data (NASA POWER near-real-time, SMAP latest, OPERA DSWx-S1 latest scenes, Open-Meteo, NOAA ENSO, FIRMS) — `web/` never calls out.
+- Secrets (API keys, tokens) only via environment variables / HF Space secrets. Never hardcode, never commit.
+- Cache is keyed per point per day, lives in `cache/` (gitignored). Demo fixtures for Aug-2024 and the 5 districts live in `demo_fixtures/` and are kept in git so the demo works with no network.
+- Every response that used `safe_fetch` reports `source_mode` (`"live"`, `"cache"`, or `"fixture"`) so the UI/agent can be honest about where a number came from.
+
 ## Working with Tanha (a beginner)
 - Before acting, say in 2–3 plain sentences what you will do and why. After acting, say what changed and how to check it.
 - Save tokens:
@@ -44,6 +50,7 @@ CropShift is Team Regolith's entry for NASA Space Apps 2026, Challenge 7, "Field
 9. `terrain.py`: HAND at 30 m from NASADEM around a point + DSWx-S1 flood frequency → plot-level flood/drainage class.
 10. FastAPI matching `docs/api_contract.md` + contract tests against `web/mock/*.json`.
 11. Agent loop with the free HF model, Bangla parsing, template fallback.
+7b. Live season + live flood check for any GPS point inside the 5 districts.
 
 ## Folders
 - **Tanha:** `src/`, `data/processed/`, `app.py`, `scripts/`.
