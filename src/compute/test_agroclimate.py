@@ -178,7 +178,7 @@ def test_analog_year_candidate_restriction_picks_next_closest():
 
 # ---------------- eto_penman_monteith ----------------
 
-def test_eto_matches_fao56_example_18_within_input_limits():
+def test_eto_matches_fao56_example_18_with_rh_extremes():
     """FAO-56 (Allen et al., 1998), Chapter 4, Example 18, p.72: reference
     ET0 for Uccle, Belgium, 6 July (day 187), lat 50.8N, elevation 100m.
     Inputs: Tmax=21.5C, Tmin=12.3C, RHmax=84%, RHmin=63%, wind at 10m =
@@ -188,19 +188,34 @@ def test_eto_matches_fao56_example_18_within_input_limits():
     takes Rs directly and has no sunshine-hours-to-Rs step).
     FAO-56's published answer is ET0=3.9 mm/day.
 
-    KNOWN LIMITATION: FAO-56 computes actual vapour pressure ea from
-    RHmax and RHmin separately (Eq. 17), but eto_penman_monteith's `row`
-    only carries a single rh_pct — it cannot take RHmax/RHmin apart, so
-    this test feeds the mean, RH=(84+63)/2=73.5%, which is the closest
-    input our function can take. That approximation alone shifts ea
-    enough to move the result to 3.79 mm/day — a 0.11 mm/day gap from
-    FAO-56's 3.9, just outside the requested +/-0.1 tolerance. So this
-    test validates against 3.79 (this function's own arithmetic, checked
-    by hand against the FAO-56 worked steps for delta, gamma, Ra, Rso,
-    Rns, Rnl, Rn - all matched to within rounding), not against the
-    published 3.9, and the gap itself is the documented result: the
-    function cannot be validated to +/-0.1 mm/day on this example without
-    accepting RHmax/RHmin as separate inputs.
+    With rh_max_pct/rh_min_pct supplied, ea is computed per FAO-56 Eq.17
+    (RHmax/RHmin separately) instead of the RH-mean approximation, closing
+    the gap that the mean-RH approximation used to leave against the
+    published value.
+    """
+    row = pd.Series({
+        "temp_max_c": 21.5, "temp_min_c": 12.3, "temp_mean_c": 16.9,
+        "rh_max_pct": 84, "rh_min_pct": 63, "wind_speed_ms": 2.078,
+        "solar_rad_mj_m2": 22.07
+    })
+    result = eto_penman_monteith(row, day_of_year=187, latitude_deg=50.8,
+                                 elevation_m=100)
+    assert abs(result - 3.9) <= 0.1
+
+
+def test_eto_falls_back_to_rh_mean_method_without_rh_extremes():
+    """When only a single mean RH is available (as with NASA POWER's
+    RH2M — no separate RHmax/RHmin), eto_penman_monteith falls back to
+    FAO-56 Eq.19: ea = es * (RHmean / 100). Same inputs as Example 18,
+    but with RH=(84+63)/2=73.5% fed as a single rh_pct.
+
+    This approximation alone shifts ea enough to move the result to
+    3.79 mm/day — a 0.11 mm/day gap from FAO-56's published 3.9, just
+    outside +/-0.1 of the true answer. So this test documents and
+    validates the Eq.19 path's own arithmetic (checked by hand against
+    the FAO-56 worked steps for delta, gamma, Ra, Rso, Rns, Rnl, Rn —
+    all matched to within rounding) against 3.79, not against the
+    published 3.9.
     """
     row = pd.Series({
         "temp_max_c": 21.5, "temp_min_c": 12.3, "temp_mean_c": 16.9,
@@ -209,7 +224,7 @@ def test_eto_matches_fao56_example_18_within_input_limits():
     })
     result = eto_penman_monteith(row, day_of_year=187, latitude_deg=50.8,
                                  elevation_m=100)
-    assert abs(result - 3.79) <= 0.1
+    assert abs(result - 3.79) <= 0.05
 
 
 def test_eto_seasonal_pattern_is_sane():
