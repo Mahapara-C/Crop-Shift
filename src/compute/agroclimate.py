@@ -159,6 +159,10 @@ def nearest_analog_year(current_season, feature_table, features=FEATURES,
     Returns the matched year, its raw distance, and each feature's
     individual normalized contribution — so the interface can explain
     WHY this year was chosen.
+
+    candidate_years (optional): restricts which years may be picked as the
+    match, while feature scaling still uses every year in feature_table, so
+    distances stay comparable with an unrestricted search.
     """
     means = feature_table[features].mean()
     stds = feature_table[features].std()
@@ -205,9 +209,6 @@ def eto_penman_monteith(row, day_of_year, latitude_deg, elevation_m):
     latitude_deg, elevation_m : site location, varies per district.
 
     Returns ET0 in mm/day.
-    candidate_years (optional): restricts which years may be picked as the
-    match, while feature scaling still uses every year in feature_table, so
-    distances stay comparable with an unrestricted search.
     """
     T_max, T_min, T_mean = row["temp_max_c"], row["temp_min_c"], row["temp_mean_c"]
     RH = row["rh_pct"]

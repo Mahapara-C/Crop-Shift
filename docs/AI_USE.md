@@ -44,6 +44,24 @@ cutoff), threaded `decision_date` through
 tests proving (1) mutating data after `decision_date` does not change the
 computed features and (2) a different `decision_date` does change them.
 
+**Claude Code** — filled Task 3 test gaps: (1) a test validating
+`eto_penman_monteith()` against FAO-56 (Allen et al., 1998) Chapter 4
+Example 18 (Uccle, Belgium, 6 July, published ET0=3.9 mm/day); found and
+documented that the function's single `rh_pct` input (vs. FAO-56's
+separate RHmax/RHmin) moves its result to 3.79 mm/day, just outside the
+requested ±0.1 mm/day tolerance of the published value, so the test
+validates against the function's own arithmetic (3.79) with the gap noted
+in the docstring rather than fudging the tolerance; (2) a direct
+`build_feature_table()` test with hand-computed expected values on a
+small synthetic dataframe, plus a test confirming a no-onset year is
+excluded from the table; (3) `src/agents/test_tool_functions.py`, testing
+`tool_nearest_analog_year()` and `tool_backtest_rotation()` against real
+district CSVs in `data/processed/` (no mocking) — result keys, that every
+`source` carries `dataset` and `url` (what `guard()` requires), and the
+pre-2015 SMAP refusal. Also moved a `candidate_years` explanation that had
+been left in `eto_penman_monteith()`'s docstring into
+`nearest_analog_year()`'s, where that parameter actually lives.
+
 **Hugging Face Inference Providers** — a free, open-source hosted model
 (Llama-3.1-8B-Instruct) is used as the CropShift agent's reasoning layer
 (Layer 3, `src/agents/`). Per the project's architecture rules, this model

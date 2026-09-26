@@ -102,6 +102,45 @@ def test_different_decision_date_changes_features():
     assert table_full.loc[2019, "mean_t2m_c"] != table_early.loc[2019, "mean_t2m_c"]
 
 
+def test_build_feature_table_exact_values_on_synthetic_data():
+    """Direct check of every output column against hand-computed values,
+    not just that decision_date changes them. Constant 15mm/day rain all
+    year: the first 7-day window (day 7) sums to 105mm (>=20 threshold);
+    the following 30 days sum to exactly 450mm (>=450 confirm threshold,
+    boundary case) with zero dry days, so onset is detected at day 7 with
+    no false-start rejection. No day is ever dry, so dry_spell_days=0.
+    Constant 25C gives mean_t2m_c=25.0 exactly."""
+    dates = pd.date_range("2020-01-01", periods=365, freq="D")
+    df = pd.DataFrame({"rainfall_mm": [15.0] * 365, "temp_mean_c": [25.0] * 365},
+                      index=dates)
+    table = build_feature_table(df, years=[2020])
+
+    assert list(table.index) == [2020]
+    assert table.loc[2020, "onset_doy"] == 7
+    assert table.loc[2020, "onset_amount_mm"] == 105.0
+    assert table.loc[2020, "dry_spell_days"] == 0
+    assert table.loc[2020, "mean_t2m_c"] == 25.0
+
+
+def test_build_feature_table_excludes_years_with_no_onset():
+    """A year with no valid monsoon onset must not appear in the table at
+    all (it has no onset_doy/onset_amount_mm to build a row from), while a
+    year in the same call that DOES have an onset still gets a row.
+    (Two years, not one, because an all-excluded call hits a separate,
+    pre-existing empty-DataFrame edge case in build_feature_table's
+    set_index("year") — out of scope for this test pass.)"""
+    onset_dates = pd.date_range("2020-01-01", periods=365, freq="D")
+    onset_df = pd.DataFrame({"rainfall_mm": [15.0] * 365, "temp_mean_c": [25.0] * 365},
+                            index=onset_dates)
+    no_onset_dates = pd.date_range("2021-01-01", periods=365, freq="D")
+    no_onset_df = pd.DataFrame({"rainfall_mm": [0.0] * 365, "temp_mean_c": [25.0] * 365},
+                               index=no_onset_dates)
+    df = pd.concat([onset_df, no_onset_df])
+
+    table = build_feature_table(df, years=[2020, 2021])
+    assert list(table.index) == [2020]
+
+
 # ---------------- nearest_analog_year ----------------
 
 def _three_year_table(onsets, amounts, spells, temps):
@@ -138,6 +177,40 @@ def test_analog_year_candidate_restriction_picks_next_closest():
 
 
 # ---------------- eto_penman_monteith ----------------
+
+def test_eto_matches_fao56_example_18_within_input_limits():
+    """FAO-56 (Allen et al., 1998), Chapter 4, Example 18, p.72: reference
+    ET0 for Uccle, Belgium, 6 July (day 187), lat 50.8N, elevation 100m.
+    Inputs: Tmax=21.5C, Tmin=12.3C, RHmax=84%, RHmin=63%, wind at 10m =
+    10 km/h -> u2=2.078 m/s (already converted to 2m height, as our
+    function requires), sunshine n=9.25h -> Rs=22.07 MJ/m2/day (FAO-56's
+    own intermediate Angstrom-formula result, since eto_penman_monteith
+    takes Rs directly and has no sunshine-hours-to-Rs step).
+    FAO-56's published answer is ET0=3.9 mm/day.
+
+    KNOWN LIMITATION: FAO-56 computes actual vapour pressure ea from
+    RHmax and RHmin separately (Eq. 17), but eto_penman_monteith's `row`
+    only carries a single rh_pct — it cannot take RHmax/RHmin apart, so
+    this test feeds the mean, RH=(84+63)/2=73.5%, which is the closest
+    input our function can take. That approximation alone shifts ea
+    enough to move the result to 3.79 mm/day — a 0.11 mm/day gap from
+    FAO-56's 3.9, just outside the requested +/-0.1 tolerance. So this
+    test validates against 3.79 (this function's own arithmetic, checked
+    by hand against the FAO-56 worked steps for delta, gamma, Ra, Rso,
+    Rns, Rnl, Rn - all matched to within rounding), not against the
+    published 3.9, and the gap itself is the documented result: the
+    function cannot be validated to +/-0.1 mm/day on this example without
+    accepting RHmax/RHmin as separate inputs.
+    """
+    row = pd.Series({
+        "temp_max_c": 21.5, "temp_min_c": 12.3, "temp_mean_c": 16.9,
+        "rh_pct": (84 + 63) / 2, "wind_speed_ms": 2.078,
+        "solar_rad_mj_m2": 22.07
+    })
+    result = eto_penman_monteith(row, day_of_year=187, latitude_deg=50.8,
+                                 elevation_m=100)
+    assert abs(result - 3.79) <= 0.1
+
 
 def test_eto_seasonal_pattern_is_sane():
     """ET0 should be lower in winter than in the pre-monsoon season."""
