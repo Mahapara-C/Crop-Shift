@@ -34,6 +34,18 @@ def test_rejects_isolated_wet_week():
     assert result["onset_doy"] is None
 
 
+def test_wet_week_at_end_of_data_is_not_onset():
+    """A single wet week in the last days of the data (as when
+    build_feature_table() cuts a year at Oct 31) has fewer than 7 days
+    after it, so the dry-spell and 30-day checks can't run. It must not
+    be accepted as the onset unchecked."""
+    values = [0.0] * 297 + [25.0] * 7  # Jan 1 - Oct 31 2019, wet Oct 25-31
+    result = rain_onset(make_series(values), 2019)
+    assert result["onset_doy"] is None
+    assert result["onset_date"] is None
+    assert result["onset_amount_mm"] is None
+
+
 def test_no_rain_all_year_returns_none():
     """A year with no rainfall at all should return None, not crash."""
     result = rain_onset(make_series([0.0] * 365), 2020)

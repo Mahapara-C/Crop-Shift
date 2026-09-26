@@ -228,8 +228,7 @@ def test_onset_moves_with_the_7_day_threshold():
 
 def test_onset_not_found_when_confirm_total_too_high():
     # 12 mm/day gives 360 mm in 30 days: passes 350, fails 450 and 550.
-    # The rain stops after 60 days so no wet week sits in the last 7 days
-    # before the cutoff (rain_onset() accepts such a week unconfirmed).
+    # The rain stops after 60 days, well before the cutoff.
     rain = steady_monsoon(150, 12.0, years=(2001,), length_days=60)
     table = onset_sensitivity(rain, [2001])
     found = table.set_index("confirm_mm")["onset_doy"]
@@ -257,10 +256,11 @@ def test_unconfirmed_onset_is_the_last_week_before_the_cutoff():
     assert not unconfirmed_onset(np.nan, 2001)
 
 
-def test_late_october_wet_week_is_flagged_unconfirmed():
-    # A single wet week at the very end of the window: rain_onset() accepts
-    # it without the 30-day check, and the table flags it.
+def test_late_october_wet_week_is_not_an_onset():
+    # A single wet week at the very end of the window has too few days
+    # after it to be confirmed, so rain_onset() rejects it: no onset, and
+    # nothing left to flag as unconfirmed.
     rain = steady_monsoon(298, 20.0, years=(2001,), length_days=7)
     table = onset_sensitivity(rain, [2001], week_mm=(20.0,), confirm_mm=(450.0,))
-    assert table.loc[0, "onset_doy"] == 298.0
-    assert table.loc[0, "unconfirmed"]
+    assert np.isnan(table.loc[0, "onset_doy"])
+    assert not table.loc[0, "unconfirmed"]

@@ -206,9 +206,10 @@ def trend(series):
 
 def unconfirmed_onset(onset_doy, year, decision_date="10-31", dry_spell_days=7):
     """True when an onset lies so close to the decision date that fewer
-    than dry_spell_days days follow it. rain_onset() then skips its
-    dry-spell and 30-day checks and accepts the window unconfirmed (for an
-    Oct 31 cutoff: onsets on Oct 25-31). False for a missing onset."""
+    than dry_spell_days days follow it (for an Oct 31 cutoff: onsets on
+    Oct 25-31). rain_onset() now rejects such windows, so this should
+    always be False; the report keeps the count as a check. False for a
+    missing onset."""
     if onset_doy is None or pd.isna(onset_doy):
         return False
     onset = pd.Timestamp(f"{year}-01-01") + pd.Timedelta(days=int(onset_doy) - 1)

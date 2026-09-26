@@ -174,6 +174,18 @@ a spurious late-October onset in `build_feature_table()`; these are
 flagged in the report. Net irrigation from the water balance moves in
 steps of about one RAW refill, which the report states.
 
+**Claude Code** — fixed the `rain_onset()` edge case flagged in Task 5b.
+A 7-day window with fewer than 7 days of data after it (a wet week just
+before the 31 Oct cutoff) was accepted as the onset without the
+dry-spell and 30-day checks; it is now skipped, so such a year has no
+onset. All other defaults unchanged. Added a test (a single wet week at
+the very end of the data is not an onset) and rewrote one hindcast test
+that had pinned the old behaviour. Re-ran `scripts/run_hindcast.py`: the
+unconfirmed late-October onsets in `docs/results/hindcast.md` drop to 0,
+and those years now count as "no onset", so 21 fewer district-seasons
+are scored in the analog comparison (pooled 141 -> 120 for rabi rain).
+The conclusion is unchanged: nothing tested beats the long-term average.
+
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA SMAP (via AppEEARS),
 and FAO-56 (Allen et al., 1998) reference values — see README and inline
