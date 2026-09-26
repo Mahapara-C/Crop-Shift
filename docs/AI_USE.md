@@ -62,6 +62,30 @@ pre-2015 SMAP refusal. Also moved a `candidate_years` explanation that had
 been left in `eto_penman_monteith()`'s docstring into
 `nearest_analog_year()`'s, where that parameter actually lives.
 
+**Claude Code** — Task 4, the FAO-56 root-zone water balance. Wrote
+`src/compute/water_balance.py`: FAO-56 Chapter 8 Eq. 82-88 (TAW, RAW,
+Ks, the daily depletion balance, deep percolation), a Kc curve that
+interpolates linearly through the development and late stages (FAO-56
+Eq. 66 / Fig. 25) instead of stepping, and per crop/sowing date/year
+outputs (water-stress days rainfed, net irrigation mm to refill to field
+capacity whenever Dr > RAW, deep percolation mm, daily tables). Wrote its
+tests (`test_water_balance.py`: mass balance closes, no-rain depletion
+grows, heavy rain drains, irrigation refills, a hand-computed stress-day
+count). Built the two reference files from sources it read during the
+session rather than from memory: `data/reference/crop_params.csv` (Zr
+and p from FAO-56 Table 22, checked against the FAO HTML edition) and
+`data/reference/soil_params.csv`, written by the new
+`src/acquire/fetch_soilgrids.py` (clay/silt/sand from ISRIC SoilGrids 2.0
+around each district, sampled away from the India border, then the
+FAO-56 Table 19 midpoints for that USDA texture). Two districts'
+SoilGrids textures have no Table 19 row (Brahmanbaria: clay loam;
+Sylhet: sandy clay loam); the script refuses to guess unless a reviewed
+fallback is recorded, and uses the nearest Table 19 class (clay; loam),
+with the reason written into each row's notes. Wrote
+`scripts/validate_water_balance.py`, which compares weekly anomalies of a
+reference-grass balance with SMAP root-zone soil moisture (2015-2025) and
+writes `docs/results/water_balance_validation.md`.
+
 **Hugging Face Inference Providers** — a free, open-source hosted model
 (Llama-3.1-8B-Instruct) is used as the CropShift agent's reasoning layer
 (Layer 3, `src/agents/`). Per the project's architecture rules, this model
