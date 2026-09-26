@@ -18,21 +18,31 @@ import re
 _BANGLA_DIGITS = "০১২৩৪৫৬৭৮৯"
 _BANGLA_TO_ASCII = str.maketrans(_BANGLA_DIGITS, "0123456789")
 
-# One or more ASCII/Bangla digits, optional comma grouping, optional decimal
+# An optional leading minus (only when not glued to a preceding digit/dot,
+# so date components like "2024-10-10" don't get swallowed as negatives),
+# one or more ASCII/Bangla digits, optional comma grouping, optional decimal
 # part, optional trailing percent sign.
 _NUMBER_RE = re.compile(
+    r"(?<![0-9০-৯.])-?"
     r"[0-9০-৯](?:[0-9০-৯,]*[0-9০-৯])?"
     r"(?:\.[0-9০-৯]+)?%?"
 )
-
-# Absolute and relative tolerance for "the model rounded a cited number".
-_ABS_TOLERANCE = 0.01
-_REL_TOLERANCE = 0.005
 
 
 def _to_float(digits):
     ascii_digits = digits.translate(_BANGLA_TO_ASCII).replace(",", "")
     return float(ascii_digits)
+
+
+def _decimal_places(raw):
+    """How many digits appear after the decimal point in `raw` (0 if none),
+    used so a text number only matches a cited value that rounds to it at
+    the same precision the model wrote."""
+    core = raw[:-1] if raw.endswith("%") else raw
+    core = core.replace(",", "")
+    if "." in core:
+        return len(core.split(".", 1)[1])
+    return 0
 
 
 def find_numbers(text):
@@ -71,6 +81,11 @@ def _collect_numbers(value, out):
         return
     if isinstance(value, (int, float)):
         out.append(float(value))
+    elif isinstance(value, str):
+        # Numbers written inside a cited string (a date "2024-10-10", a
+        # name like "FAO-56") are citable too.
+        for number in find_numbers(value):
+            out.append(number["value"])
     elif isinstance(value, dict):
         for v in value.values():
             _collect_numbers(v, out)
@@ -94,10 +109,13 @@ def _allowed_numbers(tool_results):
     return allowed
 
 
-def _matches(value, allowed_numbers):
+def _matches(value, raw, allowed_numbers):
+    """A number matches if it's an allowed value, or if rounding an allowed
+    value to the same number of decimals the model wrote gives it exactly
+    (187.6 -> "188" matches, "190" does not)."""
+    decimals = _decimal_places(raw)
     for allowed in allowed_numbers:
-        tolerance = max(_ABS_TOLERANCE, abs(allowed) * _REL_TOLERANCE)
-        if abs(value - allowed) <= tolerance:
+        if abs(round(allowed, decimals) - value) < 1e-9:
             return True
     return False
 
@@ -113,7 +131,7 @@ def guard(text, tool_results):
 
     blocked_numbers = [
         number["raw"] for number in found
-        if not _matches(number["value"], allowed_numbers)
+        if not _matches(number["value"], number["raw"], allowed_numbers)
     ]
 
     return {

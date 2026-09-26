@@ -82,3 +82,33 @@ def test_find_numbers_handles_commas_and_decimals():
     values = [n["value"] for n in numbers]
     assert 1234.5 in values
     assert 90.0 in values
+
+
+def test_numbers_inside_cited_strings_are_allowed():
+    cited = {
+        "decision_date": "2024-10-10",
+        "method": {"name": "FAO-56"},
+        "source": POWER_SOURCE,
+    }
+    text = "The decision date was 2024-10-10, using the FAO-56 method."
+    result = guard(text, [cited])
+    assert result["passed"] is True
+    assert result["blocked_numbers"] == []
+
+
+def test_rounding_matches_by_written_decimal_places():
+    cited = {"value": 187.6, "source": POWER_SOURCE}
+
+    passes = guard("About 188 mm of irrigation is needed.", [cited])
+    assert passes["passed"] is True
+
+    fails = guard("About 190 mm of irrigation is needed.", [cited])
+    assert fails["passed"] is False
+    assert "190" in fails["blocked_numbers"]
+
+
+def test_negative_number_does_not_match_positive_cited_value():
+    cited = {"value": 5, "source": POWER_SOURCE}
+    result = guard("The anomaly was -5 mm this year.", [cited])
+    assert result["passed"] is False
+    assert "-5" in result["blocked_numbers"]
