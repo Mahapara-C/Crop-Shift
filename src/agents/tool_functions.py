@@ -62,11 +62,15 @@ def _load_kc_table():
     return _kc_table
 
 
-def tool_nearest_analog_year(district, current_season):
+def tool_nearest_analog_year(district, current_season, decision_date="10-31"):
     """Returns TWO matches: the closest year overall (full 2001-2025 POWER
     pool, per prompt-2.md's matching decision), and the closest year that
-    also has SMAP soil-moisture records, which is the one to backtest."""
-    feature_table = build_feature_table(_load_power(district))
+    also has SMAP soil-moisture records, which is the one to backtest.
+
+    decision_date restricts every candidate year's features to data from
+    Jan 1 through that MM-DD, so matching never uses data that wouldn't
+    yet be available on the day the recommendation is made."""
+    feature_table = build_feature_table(_load_power(district), decision_date=decision_date)
     covered_years = [y for y in feature_table.index if y >= SMAP_FIRST_YEAR]
 
     overall = _nearest_analog_year(current_season, feature_table)
