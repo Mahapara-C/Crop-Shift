@@ -148,6 +148,32 @@ added a regression test with a run that starts mid-series. `build_feature_table(
 default years are unchanged (2001-2025); `python -m pytest src -q` passes
 (74 tests) with no changes to any existing test's expected values.
 
+**Claude Code** — Task 5b, hindcast + trends + El Nino lens. Wrote
+`src/compute/hindcast.py` (seasonal totals that refuse partly covered
+windows, analog ranking built on the unchanged `nearest_analog_year()`,
+a leave-one-year-out comparison of the long-term average, 1 analog, the
+mean of 5 analogs and the ENSO-phase average, skill = 1 - MAE/MAE of the
+long-term average with a sign test, Mann-Whitney group comparison,
+Mann-Kendall + Theil-Sen trends via SciPy, and `rain_onset()` threshold
+sensitivity) with tests on tiny synthetic data (`test_hindcast.py`: a
+perfect analog scores skill 1, a constant series makes the long-term
+average exact, the held-out season never feeds its own estimate). Added
+`classify_oni()` and `season_enso_labels()` to `src/compute/enso.py`
+(one label per season from the ASO ONI value, known by the 31 Oct
+decision date) with new tests in `test_enso.py`; existing functions,
+defaults and tests unchanged. Wrote `scripts/run_hindcast.py`, which
+writes `docs/results/hindcast.md`. Added SciPy to the venv (free,
+open-source). While checking the real-data results it found and reported,
+without changing the existing functions: (1) POWER Jun-Sep rain in
+1981-2000 is about half the 2001-2025 level and most early years have no
+confirmed monsoon onset, so the 1981-2025 rain "trends" are not
+presented as climate change and a 2001-2025 robustness check was added;
+(2) `rain_onset()` accepts a wet week in the last 7 days before the
+cutoff without its dry-spell and 30-day checks, which gives some years
+a spurious late-October onset in `build_feature_table()`; these are
+flagged in the report. Net irrigation from the water balance moves in
+steps of about one RAW refill, which the report states.
+
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA SMAP (via AppEEARS),
 and FAO-56 (Allen et al., 1998) reference values — see README and inline
