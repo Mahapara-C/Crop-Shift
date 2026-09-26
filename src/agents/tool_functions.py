@@ -5,6 +5,9 @@ Maps tool names (from tools.json) to real, callable Python functions.
 This is the ONLY place the agent layer touches actual data — it loads
 each district's pre-processed CSVs and calls the deterministic Layer 1
 functions in src/compute/agroclimate.py. No AI involvement here.
+
+Weather comes from load_weather() in src/compute/weather.py: NASA GPM IMERG
+rain with NASA POWER temperature, humidity, wind and radiation (task 5d).
 """
 
 import os
@@ -15,6 +18,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "compute"))
 from agroclimate import (build_feature_table,
                          nearest_analog_year as _nearest_analog_year,
                          backtest_rotation as _backtest_rotation)
+from weather import load_weather, RAIN_CITATIONS
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
 
@@ -29,23 +33,34 @@ DISTRICT_META = {
 
 SMAP_FIRST_YEAR = 2015  # NASA SMAP L4 record starts 2015-03-31
 
-POWER_SOURCE = {"dataset": "NASA POWER Daily Point API (AG community)",
+POWER_SOURCE = {"dataset": "NASA POWER Daily Point API (AG community): temperature, humidity, "
+                           "wind, solar radiation",
                 "url": "https://power.larc.nasa.gov/"}
+RAIN_SOURCE = RAIN_CITATIONS["imerg"]
+FIRST_YEAR = 2001  # IMERG rain starts 2001
 SMAP_SOURCE = {"dataset": "NASA SMAP L4 root-zone soil moisture (SPL4SMGP.008), via AppEEARS",
                "url": "https://appeears.earthdatacloud.nasa.gov/"}
 KC_SOURCE = {"dataset": "FAO-56 crop coefficients (Allen et al., 1998)",
              "url": "https://www.fao.org/4/x0490e/x0490e00.htm"}
 
-_power_cache = {}
+_weather_cache = {}
 _smap_cache = {}
 _kc_table = None
 
 
-def _load_power(district):
-    if district not in _power_cache:
-        path = os.path.join(DATA_DIR, f"power_{district}_daily.csv")
-        _power_cache[district] = pd.read_csv(path, index_col="date", parse_dates=True)
-    return _power_cache[district]
+def _load_weather(district):
+    if district not in _weather_cache:
+        _weather_cache[district] = load_weather(district, data_dir=DATA_DIR)
+    return _weather_cache[district]
+
+
+def candidate_years(weather, decision_date):
+    """Years from FIRST_YEAR whose data reaches decision_date, so a year cut
+    off by the end of the record (e.g. IMERG ending 30 Sep) is never matched
+    on a truncated season."""
+    last = weather.index.max()
+    return [y for y in range(FIRST_YEAR, last.year + 1)
+            if pd.Timestamp(f"{y}-{decision_date}") <= last]
 
 
 def _load_smap(district):
@@ -63,14 +78,16 @@ def _load_kc_table():
 
 
 def tool_nearest_analog_year(district, current_season, decision_date="10-31"):
-    """Returns TWO matches: the closest year overall (full 2001-2025 POWER
-    pool, per prompt-2.md's matching decision), and the closest year that
-    also has SMAP soil-moisture records, which is the one to backtest.
+    """Returns TWO matches: the closest year overall (every year from 2001
+    with complete data, per prompt-2.md's matching decision), and the closest
+    year that also has SMAP soil-moisture records, which is the one to backtest.
 
     decision_date restricts every candidate year's features to data from
     Jan 1 through that MM-DD, so matching never uses data that wouldn't
     yet be available on the day the recommendation is made."""
-    feature_table = build_feature_table(_load_power(district), decision_date=decision_date)
+    weather = _load_weather(district)
+    years = candidate_years(weather, decision_date)
+    feature_table = build_feature_table(weather, years=years, decision_date=decision_date)
     covered_years = [y for y in feature_table.index if y >= SMAP_FIRST_YEAR]
 
     overall = _nearest_analog_year(current_season, feature_table)
@@ -82,10 +99,11 @@ def tool_nearest_analog_year(district, current_season, decision_date="10-31"):
         "year_to_backtest": covered["analog_year"],
         "years_compared": len(feature_table),
         "years_compared_with_soil_moisture": len(covered_years),
-        "note": ("Matching searched every year from 2001 to 2025 with a valid "
-                 "monsoon onset. Soil-moisture records start in 2015, so "
+        "note": (f"Matching searched every year from {years[0]} to {years[-1]} with a "
+                 "valid monsoon onset. Soil-moisture records start in 2015, so "
                  "rotation backtests use the closest match from 2015 onward."),
-        "source": POWER_SOURCE,
+        "source": RAIN_SOURCE,
+        "sources": [RAIN_SOURCE, POWER_SOURCE],
     }
 
 
@@ -102,7 +120,7 @@ def tool_backtest_rotation(district, analog_year, rotation_plan):
     result = _backtest_rotation(
         rotation_plan=rotation_plan,
         analog_year=analog_year,
-        power_df=_load_power(district),
+        power_df=_load_weather(district),
         smap_series=_load_smap(district),
         kc_table=_load_kc_table(),
         latitude_deg=meta["lat"],
@@ -119,7 +137,7 @@ def tool_backtest_rotation(district, analog_year, rotation_plan):
         "coverage_complete": complete,
         "usable_moisture_days": result["usable_moisture_days"],
         "by_crop": result["by_crop"],
-        "sources": [SMAP_SOURCE, POWER_SOURCE, KC_SOURCE],
+        "sources": [SMAP_SOURCE, RAIN_SOURCE, POWER_SOURCE, KC_SOURCE],
     }
     if not complete:
         output["coverage_note"] = (

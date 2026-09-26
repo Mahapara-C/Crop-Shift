@@ -2,7 +2,8 @@
 Diagnostic: is a low backtest score a genuinely dry year, or a drift in
 the SMAP record? For each year it compares the average SEASONAL soil-
 moisture percentile (June-November, same method as backtest_rotation)
-with total June-November rainfall from NASA POWER, an independent source.
+with total June-November rainfall (NASA GPM IMERG via load_weather()). Not
+fully independent: SMAP L4's rain forcing is corrected to IMERG.
 """
 
 import os
@@ -11,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "agents"))
-from tool_functions import _load_smap, _load_power
+from tool_functions import _load_smap, _load_weather
 
 
 def seasonal_percentiles(smap, window=15):
@@ -31,7 +32,7 @@ def seasonal_percentiles(smap, window=15):
 for district in ["cumilla", "brahmanbaria", "noakhali"]:
     pct = seasonal_percentiles(_load_smap(district))
     pct = pct[(pct.index.month >= 6) & (pct.index.month <= 11)]
-    rain = _load_power(district)["rainfall_mm"]
+    rain = _load_weather(district)["rainfall_mm"]
     rain = rain[(rain.index.month >= 6) & (rain.index.month <= 11)]
 
     table = pd.DataFrame({

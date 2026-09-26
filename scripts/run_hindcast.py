@@ -1,14 +1,16 @@
 """
 scripts/run_hindcast.py
 
-Task 5b/5c: leave-one-year-out hindcast of rabi outcomes, the El Nino
-lens, onset sensitivity and trends, for the five districts. The primary
-analysis window is 2001-2025 (see CLAUDE.md, "Data facts": pre-2001
-NASA POWER rain is not consistent with later years). The full 1981-2025
-record is shown only in the appendix data-consistency check. Writes
-docs/results/hindcast.md.
+Task 5b/5c/5d: leave-one-year-out hindcast of rabi outcomes, the El Nino
+lens, onset sensitivity and trends, for the five districts. Rain comes from
+NASA GPM IMERG (load_weather() in src/compute/weather.py; task 5d): NASA
+POWER rain has step changes around 1997 and 2014-15 (see
+docs/results/rain_source_check.md). The primary window is seasons 2001-2024
+(IMERG Final Run ends 2025-09-30, so season 2025 is not complete). The full
+1981-2025 NASA POWER record is run too, but shown only in the appendix
+data-consistency check. Writes docs/results/hindcast.md.
 
-Run from the repo root (takes about 5 minutes):
+Run from the repo root (takes about 12 minutes):
     python scripts/run_hindcast.py
 """
 
@@ -26,20 +28,22 @@ from hindcast import (seasonal_series, loo_hindcast, skill_table, compare_groups
                       trend, onset_sensitivity, onset_shift_summary, unconfirmed_onset)
 from water_balance import (load_crop_params, load_soil_params, weather_table,  # noqa: E402
                            crop_season_all_years, total_available_water)
+from weather import load_weather, RAIN_CITATIONS  # noqa: E402
 
 DATA = os.path.join(ROOT, "data", "processed")
 ONI_PATH = os.path.join(ROOT, "data", "reference", "oni.csv")
 OUT_PATH = os.path.join(ROOT, "docs", "results", "hindcast.md")
 
-YEARS = list(range(1981, 2026))   # season Y = Nov 1 of Y to Apr 30 of Y+1
+RAIN_SOURCE = "imerg"             # main analysis; the POWER run feeds the appendix only
+YEARS = list(range(1981, 2026))   # full POWER record (appendix); season Y = Nov 1 of Y to Apr 30 of Y+1
 EARLY = (1981, 2000)              # the part of the record added in task 5a
-RECENT = (2001, 2025)             # the record the app was first built on
+RECENT = (2001, 2024)             # primary window: IMERG starts 2001, its last season is 2024
 WB_FIRST_YEAR = 1984              # POWER solar radiation (so ET0) starts 1984-01-01
 DECISION_DATE = "10-31"
 SOWING = "11-15"
 CROPS = ("mustard", "wheat")
 K = 5
-SHARED_CELL = "noakhali"          # same POWER cell as Feni: reported, never pooled
+SHARED_CELL = "noakhali"          # same POWER cell as Feni (temperature etc.): reported, never pooled
 METHODS = ["analog_1", f"analog_{K}", "enso_phase"]
 METHOD_NAMES = {"analog_1": "1 nearest analog", f"analog_{K}": f"mean of {K} nearest analogs",
                 "enso_phase": "ENSO-phase average"}
@@ -66,53 +70,57 @@ TRENDS = {
 
 # ---------------- compute ----------------
 
-def district_outcomes(power, lat, elev, soil, crop_params, kc_table):
+def district_outcomes(daily, lat, elev, soil, crop_params, kc_table, years):
     """One row per season year Y with every outcome used in the report."""
-    rain, tmax = power["rainfall_mm"], power["temp_max_c"]
-    out = pd.DataFrame(index=YEARS)
-    out["rabi_rain"] = seasonal_series(rain, YEARS, "11-01", "04-30", 0, 1)
-    out["next_monsoon_rain"] = seasonal_series(rain, YEARS, "06-01", "09-30", 1, 1)
-    out["next_premonsoon_tmax"] = seasonal_series(tmax, YEARS, "03-01", "05-31", 1, 1, how="mean")
-    out["jjas_rain"] = seasonal_series(rain, YEARS, "06-01", "09-30", 0, 0)
-    out["mam_tmax"] = seasonal_series(tmax, YEARS, "03-01", "05-31", 0, 0, how="mean")
-    weather = weather_table(power.loc[f"{WB_FIRST_YEAR}-01-01":], lat, elev)
+    rain, tmax = daily["rainfall_mm"], daily["temp_max_c"]
+    out = pd.DataFrame(index=years)
+    out["rabi_rain"] = seasonal_series(rain, years, "11-01", "04-30", 0, 1)
+    out["next_monsoon_rain"] = seasonal_series(rain, years, "06-01", "09-30", 1, 1)
+    out["next_premonsoon_tmax"] = seasonal_series(tmax, years, "03-01", "05-31", 1, 1, how="mean")
+    out["jjas_rain"] = seasonal_series(rain, years, "06-01", "09-30", 0, 0)
+    out["mam_tmax"] = seasonal_series(tmax, years, "03-01", "05-31", 0, 0, how="mean")
+    first = max(WB_FIRST_YEAR, daily.index.min().year)
+    weather = weather_table(daily.loc[f"{first}-01-01":], lat, elev)
     for crop in CROPS:
         seasons = crop_season_all_years(crop, SOWING, weather, kc_table, crop_params, soil,
-                                        years=range(WB_FIRST_YEAR, YEARS[-1] + 1))
+                                        years=range(first, years[-1] + 1))
         seasons = seasons.set_index("year")
         out[f"{crop}_irrigation"] = seasons["net_irrigation_mm"]
         out[f"{crop}_stress"] = seasons["water_stress_days"].astype(float)
     return out
 
 
-def compute():
+def compute(rain_source, years):
+    """Every result for one rain source over season years `years`. res["loo"]
+    covers all of `years`; res["loo_recent"] only the primary window RECENT."""
     meta = pd.read_csv(os.path.join(DATA, "district_metadata.csv"))
     soil = load_soil_params()
     crop_params = load_crop_params()
     kc_table = pd.read_csv(os.path.join(DATA, "kc_table.csv"))
     oni = pd.read_csv(ONI_PATH)
-    labels = season_enso_labels(oni, "ASO").reindex(YEARS)
-    labels_jas = season_enso_labels(oni, "JAS").reindex(YEARS)
+    labels = season_enso_labels(oni, "ASO").reindex(years)
+    labels_jas = season_enso_labels(oni, "JAS").reindex(years)
+    only_recent = years[0] == RECENT[0] and years[-1] == RECENT[1]
 
     res = {"districts": list(meta["district"]), "labels": labels, "labels_jas": labels_jas,
            "outcomes": {}, "features": {}, "loo": {}, "loo_recent": {}, "onsets": [],
-           "raw_mm": {}}
+           "raw_mm": {}, "years": years, "rain_source": rain_source}
     for _, d in meta.iterrows():
         name = d["district"]
-        print(f"{name}: outcomes ...", flush=True)
-        power = pd.read_csv(os.path.join(DATA, f"power_{name}_daily.csv"),
-                            index_col="date", parse_dates=True)
-        outcomes = district_outcomes(power, d["latitude"], d["elevation_m"],
-                                     soil[name], crop_params, kc_table)
-        feats = build_feature_table(power, years=YEARS, decision_date=DECISION_DATE)
+        print(f"{name} ({rain_source} rain): outcomes ...", flush=True)
+        daily = load_weather(name, rain_source)
+        outcomes = district_outcomes(daily, d["latitude"], d["elevation_m"],
+                                     soil[name], crop_params, kc_table, years)
+        feats = build_feature_table(daily, years=years, decision_date=DECISION_DATE)
         res["outcomes"][name], res["features"][name] = outcomes, feats
-        print(f"{name}: hindcast ...", flush=True)
-        recent_feats = feats[feats.index >= RECENT[0]]
+        print(f"{name} ({rain_source} rain): hindcast ...", flush=True)
+        recent_feats = feats[(feats.index >= RECENT[0]) & (feats.index <= RECENT[1])]
         for key in OUTCOMES:
-            res["loo"][(name, key)] = loo_hindcast(outcomes[key], feats, labels["phase"], k=K)
             res["loo_recent"][(name, key)] = loo_hindcast(
                 outcomes[key].loc[RECENT[0]:RECENT[1]], recent_feats, labels["phase"], k=K)
-        onsets = onset_sensitivity(power["rainfall_mm"], YEARS, decision_date=DECISION_DATE)
+            res["loo"][(name, key)] = (res["loo_recent"][(name, key)] if only_recent else
+                                       loo_hindcast(outcomes[key], feats, labels["phase"], k=K))
+        onsets = onset_sensitivity(daily["rainfall_mm"], years, decision_date=DECISION_DATE)
         onsets["district"] = name
         res["onsets"].append(onsets)
         # Irrigated run refills the root zone once depletion passes RAW (Zr = zr_min).
@@ -135,7 +143,7 @@ def dname(d):
 
 
 def row_name(d):
-    return f"{dname(d)} (Feni's cell; not pooled)" if d == SHARED_CELL else dname(d)
+    return f"{dname(d)} (Feni's POWER cell; not pooled)" if d == SHARED_CELL else dname(d)
 
 
 def fmt(x, decimals=0, sign=False):
@@ -296,14 +304,14 @@ def section_consistency(res):
     table = "\n".join(rows)
     unconfirmed = "; ".join(f"{dname(d)}: {', '.join(map(str, unconfirmed_feature_years(res, d))) or 'none'}"
                             for d in res["districts"])
-    missing = "; ".join(f"{dname(d)}: {', '.join(map(str, sorted(set(YEARS) - set(res['features'][d].index)))) or 'none'}"
+    missing = "; ".join(f"{dname(d)}: {', '.join(map(str, sorted(set(res['years']) - set(res['features'][d].index)))) or 'none'}"
                         for d in res["districts"])
     return table, unconfirmed, missing
 
 
 def section_lens(res, years):
     """years: contiguous list of season years to restrict the lens to
-    (RECENT for the primary window, YEARS for the full-record appendix)."""
+    (RECENT for the primary window, res["years"] for the full-record appendix)."""
     el, strong, counts = enso_lists(res, years)
     lab = res["labels"]
     lines = ["| Outcome | n El Niño seasons | n other seasons | median, El Niño | median, other | "
@@ -422,9 +430,9 @@ def irrigation_step_text(res):
 # ---------------- plain-English summary ----------------
 
 def meaning(res, tr_recent, lens):
-    """All numbers here are over the primary window, {RECENT[0]}-{RECENT[1]}
-    only. The full 1981-2025 record is appendix-only (see the data-consistency
-    check) and is never quoted here."""
+    """All numbers here are over the primary window, {RECENT[0]}-{RECENT[1]},
+    with IMERG rain only. The full 1981-2025 POWER record is appendix-only
+    (see the data-consistency check) and is never quoted here."""
     lines = []
     wins = []
     for key, (label, _, _) in OUTCOMES.items():
@@ -443,7 +451,11 @@ def meaning(res, tr_recent, lens):
     else:
         lines.append(f"- **Nothing tested reliably beats the long-term average**, {RECENT[0]}-"
                      f"{RECENT[1]}, except: " + "; ".join(wins) + ". Every other method-outcome "
-                     f"pair is within chance of the long-term average or worse.")
+                     f"pair is within chance of the long-term average or worse. With "
+                     f"{len(OUTCOMES) * len(METHODS)} method-outcome pairs tested, one p < 0.05 "
+                     f"could appear by chance, and the pooled p is optimistic (neighbouring "
+                     f"districts are not independent); a skill this small is not a reason to use "
+                     f"that method.")
 
     analog = [pooled_skill(res, k).loc["analog_1", "skill"] for k in OUTCOMES]
     analog_k = [pooled_skill(res, k).loc[f"analog_{K}", "skill"] for k in OUTCOMES]
@@ -462,10 +474,10 @@ def meaning(res, tr_recent, lens):
 
     lines.append(f"- **Keep ranking on the spread of past years** (\"problems in X of N years\", average "
                  f"and worst 20%), not on one analog year or an ENSO average: the long-term average "
-                 f"is the benchmark nothing here beats. Rankings, skill and trends use only "
-                 f"{RECENT[0]}-{RECENT[1]}: NASA POWER rain before 2001 is not consistent with later "
-                 f"years (see the appendix data-consistency check), so pre-2001 seasons are not used "
-                 f"in any recommendation.")
+                 f"is the benchmark nothing here reliably beats. Rankings, skill and trends use only "
+                 f"{RECENT[0]}-{RECENT[1]} with NASA GPM IMERG rain: NASA POWER rain has step "
+                 f"changes around 1997 and 2014-15 (see `docs/results/rain_source_check.md` and the "
+                 f"appendix), so POWER rain is not used in any recommendation.")
 
     sig = [(label, unit, c) for _, label, unit, _, c in lens if significant(c["p"])]
     if sig:
@@ -486,43 +498,61 @@ def meaning(res, tr_recent, lens):
         items = [f"{TRENDS[k][1]} {t[('pooled', k)]['slope_per_decade']:+.1f} {TRENDS[k][2]}/decade "
                  f"({p_eq(t[('pooled', k)]['p'])})" for k in TRENDS if significant(t[("pooled", k)]["p"])]
         return "; ".join(items) if items else "none"
-    lines.append(f"- **Trends (4-district mean, p < 0.05, {RECENT[0]}-{RECENT[1]} only):** "
-                 f"{listing(tr_recent)}. The full 1981-2025 record is not used for trends: it has a "
-                 f"large jump in NASA POWER rain around 1997 that is a data-consistency problem, not "
-                 f"a climate signal (see the appendix).")
+    lines.append(f"- **Trends (4-district mean, p < 0.05, {RECENT[0]}-{RECENT[1]}, IMERG rain):** "
+                 f"{listing(tr_recent)}. The earlier NASA POWER Jun-Sep rain trend (task 5c) came from "
+                 f"POWER's 2014-15 step change, not from the climate, and must not be quoted. POWER "
+                 f"trends appear only in the appendix.")
     return "\n".join(lines)
 
 
 # ---------------- report ----------------
 
-def write_report(res):
+def write_report(res, res_power):
+    """res: IMERG rain, primary window (every main section).
+    res_power: NASA POWER rain, full 1981-2025 record (appendix only)."""
     recent_years = list(range(RECENT[0], RECENT[1] + 1))
     tr_recent = trend_results(res, RECENT)
     lens_recent = lens_rows(res, recent_years)
     ls_recent = section_lens(res, recent_years)
     on = section_onset(res)
-    cons_table, unconfirmed_years, missing_years = section_consistency(res)
+    unconfirmed_main = "; ".join(
+        f"{dname(d)}: {', '.join(map(str, unconfirmed_feature_years(res, d))) or 'none'}"
+        for d in res["districts"])
+    missing_main = "; ".join(
+        f"{dname(d)}: {', '.join(map(str, sorted(set(recent_years) - set(res['features'][d].index)))) or 'none'}"
+        for d in res["districts"])
     pooled_names = ", ".join(dname(d) for d in pooled_districts(res))
     n_trend_tests_recent = len(TRENDS) * (len(res["districts"]) + 1)
+    last_monsoon_missing = np.isnan(pooled_mean(res, "next_monsoon_rain").get(RECENT[1], np.nan))
+    monsoon_note = (f"The next monsoon of season {RECENT[1]} is not complete in the data yet."
+                    if last_monsoon_missing else
+                    f"The next monsoon of season {RECENT[1]} (Jun-Sep {RECENT[1] + 1}) is included.")
 
-    # appendix-only, full 1981-2025 record
-    tr_full = trend_results(res, (YEARS[0], YEARS[-1]))
-    ls_full = section_lens(res, YEARS)
-    n_trend_tests_full = len(TRENDS) * (len(res["districts"]) + 1)
+    # appendix-only, NASA POWER rain
+    years_full = res_power["years"]
+    cons_table, unconfirmed_years, missing_years = section_consistency(res_power)
+    tr_full = trend_results(res_power, (years_full[0], years_full[-1]))
+    ls_full = section_lens(res_power, years_full)
+    n_trend_tests_full = len(TRENDS) * (len(res_power["districts"]) + 1)
 
-    text = f"""# Hindcast, El Niño lens and trends (Task 5b/5c)
+    text = f"""# Hindcast, El Niño lens and trends (Task 5b/5c/5d)
 
 Generated by `scripts/run_hindcast.py`. Do not edit by hand; re-run the script.
 
 This page checks how well simple ways of using past seasons match a rabi season they
 were not allowed to see, measured as **skill vs the long-term average** of the other
 seasons. It tests methods; it says nothing about any future season. All numbers are
-for NASA POWER data for the area around each district point, not for a particular field.
+for NASA data for the area around each district point, not for a particular field.
 
-**Primary analysis window: {RECENT[0]}-{RECENT[1]}.** NASA POWER rain before 2001 is not
-consistent with later years (see the appendix), so recommendations, rankings, skill and
-trends below use {RECENT[0]}-{RECENT[1]} only. The full 1981-2025 record appears only in the
-appendix, "Data-consistency check (not used for recommendations)".
+**Rain: NASA GPM IMERG V07 Final Run daily** (0.1 degree cell; `load_weather()` in
+`src/compute/weather.py`). Temperature, humidity, wind and solar radiation: NASA POWER.
+NASA POWER rain has step changes around 1997 and 2014-15 that IMERG does not show
+(`docs/results/rain_source_check.md`), so POWER rain is used only in the appendix.
+
+**Primary analysis window: seasons {RECENT[0]}-{RECENT[1]}.** IMERG starts in 2001 and its
+Final Run currently ends on 30 Sep 2025, so season 2025 (Nov 2025-Apr 2026) is not complete.
+The full {years_full[0]}-{years_full[-1]} NASA POWER record appears only in the appendix,
+"Data-consistency check (not used for recommendations)".
 
 ## At a glance: pooled skill vs the long-term average
 
@@ -544,7 +574,7 @@ average, below 0 is worse. **Bold** = p < 0.05, in either direction. Seasons
   Y = {RECENT[0]}-{RECENT[1]}. **Decision date** = 31 Oct of Y: nothing after it is used to
   choose analogs or the ENSO label.
 - **Outcomes** per district and season:
-  - rabi rain (mm), NASA POWER daily rain;
+  - rabi rain (mm), NASA GPM IMERG daily rain;
   - net irrigation (mm) and rainfed water-stress days for **mustard** and **wheat** sown on
     15 Nov, from the FAO-56 root-zone balance in `src/compute/water_balance.py`
     (`crop_season_all_years`, default spin-up from 1 Aug at field capacity, soil from
@@ -567,9 +597,11 @@ average, below 0 is worse. **Bold** = p < 0.05, in either direction. Seasons
   left out for **every** method in that district, so all methods are scored on the same seasons.
 - **Pooled** = {pooled_names} together. Neighbouring districts share much of their weather,
   so pooled district-seasons are not independent and the pooled sign-test p is optimistic.
-- **Feni and Noakhali share one NASA POWER weather cell** (identical rain and temperature).
-  Noakhali is reported in every table but **excluded from all pooled statistics**, so that
-  cell is not counted twice. Do not read a Feni-Noakhali contrast into any number here.
+- **Feni and Noakhali share one NASA POWER weather cell** (identical temperature, humidity,
+  wind). With IMERG their rain comes from different 0.1 degree cells, but Noakhali is only
+  about 1-4% wetter (`docs/results/rain_source_check.md`). Noakhali is reported in every
+  table but **excluded from all pooled statistics**, so the shared cell is not counted twice.
+  Do not read a Feni-Noakhali contrast into any number here.
 
 ## 1. Skill vs the long-term average, per district
 
@@ -593,8 +625,7 @@ El Niño seasons: {ls_recent['el_text']}.
 ### El Niño seasons vs all other seasons (mean of {pooled_names})
 
 Context, not forecast. The next monsoon (Jun-Sep of Y+1) and next pre-monsoon (Mar-May of Y+1)
-come months after the rabi season. **Bold** = p < 0.05. The next monsoon of season {RECENT[1]}
-is not complete in the data yet.
+come months after the rabi season. **Bold** = p < 0.05. {monsoon_note}
 
 {ls_recent['main']}
 
@@ -615,9 +646,8 @@ Context, not forecast.
 
 `rain_onset()` thresholds varied: the 7-day total that starts the monsoon (15 / 20 / 25 mm) and
 the 30-day total that confirms it (350 / 450 / 550 mm). Each year uses 1 Jan to 31 Oct only
-(as `build_feature_table()` does). District-years pooled over {pooled_names}, all
-{YEARS[0]}-{YEARS[-1]} (this check is about onset detection, not about ranking a season, so it
-is not restricted to the primary window). Shift = onset with these thresholds minus onset with
+(as `build_feature_table()` does). District-years pooled over {pooled_names},
+{RECENT[0]}-{RECENT[1]}, IMERG rain. Shift = onset with these thresholds minus onset with
 the default (20 mm, 450 mm), for years where both give a confirmed onset (+ = later).
 
 {on['table']}
@@ -630,6 +660,9 @@ the default (20 mm, 450 mm), for years where both give a confirmed onset (+ = la
   i.e. a week ending 25-31 Oct with a 31 Oct cutoff, used to be accepted as the onset
   **without** the dry-spell and 30-day checks. It is now rejected (not an onset), so the
   "unconfirmed 25-31 Oct onsets" column is kept only as a check and should be 0 in every row.
+- Years with **no onset at all** by 31 Oct, IMERG rain (left out of the analog methods):
+  {missing_main}. Years resting on an unconfirmed 25-31 Oct onset (should be none):
+  {unconfirmed_main}.
 
 ## 4. Trends
 
@@ -641,13 +674,16 @@ Theil-Sen slope per decade [95% interval], Mann-Kendall tau and p (`scipy.stats.
 - **Autocorrelation is not corrected** (no pre-whitening or variance correction), so p-values
   may be too small if neighbouring years are alike.
 - {n_trend_tests_recent} tests are shown; at p < 0.05 a few could come out "significant" by chance.
-- Trends in a gridded reanalysis such as NASA POWER can reflect changes in the observations
-  feeding it, not only the climate. Do not extend these trends back before 2001 (see the
-  appendix data-consistency check).
+- Trends in gridded data can reflect changes in the observations feeding them, not only the
+  climate. IMERG shows no significant step change (`docs/results/rain_source_check.md`), but
+  its satellite inputs did change (TRMM era to 2014, GPM era after). The NASA POWER Jun-Sep
+  trend in the previous version of this page came from POWER's 2014-15 step change and must
+  not be quoted.
 
 ## Caveats
 
-- These scores compare methods on NASA POWER cell averages (~0.5 degree), not on a field.
+- These scores compare methods on cell averages (IMERG rain 0.1 degree, POWER temperature
+  about 0.5 degree), not on a field.
 - Irrigation and stress come from a model (FAO-56 bucket, runoff and capillary rise set to
   zero, one soil per district); see `docs/results/water_balance_validation.md` for how its
   soil water compares with SMAP.
@@ -656,16 +692,23 @@ Theil-Sen slope per decade [95% interval], Mann-Kendall tau and p (`scipy.stats.
 
 ## Appendix: Data-consistency check (not used for recommendations)
 
-Everything in this appendix uses the full 1981-2025 NASA POWER record. It is kept only to
-show why {RECENT[0]}-{RECENT[1]} was chosen as the primary window above; none of these numbers
+Everything in this appendix uses the full {years_full[0]}-{years_full[-1]} NASA POWER record,
+**rain included**. It is kept only to show why POWER rain was replaced; none of these numbers
 feed the ranking, ENSO lens or trend statements used by CropShift.
+
+### Skill with POWER rain over the primary window (for comparison only)
+
+Same method and seasons as "At a glance" ({RECENT[0]}-{RECENT[1]}), but with NASA POWER rain.
+Seasons scored can differ slightly because onset years differ between the two rain records.
+
+{section_glance(res_power)}
 
 ### The rain jump
 
 Mean Jun-Sep rain jumps sharply around 1997, well before any plausible change in the local
 monsoon:
 
-{section_rain_jump(res)}
+{section_rain_jump(res_power)}
 
 ### {EARLY[0]}-{EARLY[1]} vs {RECENT[0]}-{RECENT[1]}
 
@@ -679,27 +722,31 @@ so this is a check that should read "none"; see section 3): {unconfirmed_years}.
 
 Most {EARLY[0]}-{EARLY[1]} years never reach 450 mm in 30 days in POWER rain. Either the early
 monsoons really were much weaker or, more likely, the rain record is not consistent over
-time (a reanalysis's inputs change over the decades). Until this is checked against GPM
-IMERG or BMD station data, 1981-2000 stays appendix-only.
+time (a reanalysis's inputs change over the decades). IMERG starts in 2001, so it cannot
+check 1981-2000 directly, but it shows that POWER rain also jumps a second time, around
+2014-15 (`docs/results/rain_source_check.md`). POWER rain is therefore appendix-only.
 
-### Full-record ({YEARS[0]}-{YEARS[-1]}) skill, El Niño lens and trends
+### Full-record ({years_full[0]}-{years_full[-1]}) skill, El Niño lens and trends, POWER rain
 
 Shown for reference only, not used for recommendations.
 
-{section_skill(res, recent=False)}
+{section_skill(res_power, recent=False)}
 
 {ls_full['main']}
 
-{section_trends(res, tr_full, (YEARS[0], YEARS[-1]))}
+{section_trends(res_power, tr_full, (years_full[0], years_full[-1]))}
 
-- {n_trend_tests_full} tests shown here. Mean Jun-Sep rain is several times higher in
-  {RECENT[0]}-{RECENT[1]} than in {EARLY[0]}-{EARLY[1]} (see the rain jump table above); a change
-  that large is not a plausible climate signal, so these full-record trends must **not** be
-  quoted as climate change, or at all outside this appendix.
+- {n_trend_tests_full} tests shown here. Mean Jun-Sep POWER rain is far higher in
+  {RECENT[0]}-{RECENT[1]} than in {EARLY[0]}-{EARLY[1]} (see the rain jump table above) and jumps
+  again around 2014-15; changes that large are not a plausible climate signal, so these
+  POWER trends must **not** be quoted as climate change, or at all outside this appendix.
 
 ## Sources
 
-- NASA POWER daily, AG community (rain, temperature, solar radiation): https://power.larc.nasa.gov/
+- Rain: {RAIN_CITATIONS["imerg"]["dataset"]}, {RAIN_CITATIONS["imerg"]["url"]}
+  (doi:10.5067/GPM/IMERGDF/DAY/07)
+- NASA POWER daily, AG community (temperature, humidity, wind, solar radiation; rain in the
+  appendix only): https://power.larc.nasa.gov/
 - NOAA CPC Oceanic Niño Index (ONI): https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt
   (`data/reference/oni.csv`)
 - FAO-56: Allen, Pereira, Raes, Smith (1998), *Crop evapotranspiration*, FAO Irrigation and
@@ -714,8 +761,9 @@ Shown for reference only, not used for recommendations.
 
 
 def main():
-    res = compute()
-    write_report(res)
+    res = compute(RAIN_SOURCE, list(range(RECENT[0], RECENT[1] + 1)))
+    res_power = compute("power", YEARS)
+    write_report(res, res_power)
     print(f"Wrote {os.path.relpath(OUT_PATH, ROOT)}")
 
 

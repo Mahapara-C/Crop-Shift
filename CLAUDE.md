@@ -33,11 +33,13 @@ CropShift is Team Regolith's entry for NASA Space Apps 2026, Challenge 7, "Field
 6. **Never cut:** the analog backtest (field twin), the Kc-weighted water comparison, `guard()`, and the hindcast.
 
 ## Data facts
-- `data/processed/`: POWER daily 2001-01-01→2026-08-31 (`rainfall_mm, temp_mean_c, temp_max_c, temp_min_c, rh_pct, wind_speed_ms, solar_rad_mj_m2`); SMAP root-zone 2015→2026; `kc_table.csv`; `district_metadata.csv`.
-- **Feni and Noakhali share one POWER weather cell.** Don't claim a contrast between them (fix planned: GPM IMERG).
+- `data/processed/`: POWER daily 1981-01-01→2026-08-31 (`rainfall_mm, temp_mean_c, temp_max_c, temp_min_c, rh_pct, wind_speed_ms, solar_rad_mj_m2`); IMERG daily rain 2001-01-01→2025-09-30 (`imerg_<district>_daily.csv`, cells in `imerg_cells.csv`); SMAP root-zone 2015→2026; `kc_table.csv`; `district_metadata.csv`.
+- **Rain source = NASA GPM IMERG V07 Final Run** (0.1°). Always load weather with `load_weather(district)` (`src/compute/weather.py`): IMERG rain + POWER temperature/RH/wind/solar. POWER rain has step changes (~1997 and ~2014-15, `docs/results/rain_source_check.md`); never use it for recommendations, rankings or trends.
+- **Feni and Noakhali share one POWER cell** (temperature etc.). With IMERG their rain comes from separate cells, but Noakhali is only ~1-4% wetter: don't headline a contrast.
 - OPERA DSWx-S1 exists over Feni/Cumilla from 21 Aug 2024 only.
 - Researched values: `data/reference/*.csv` with the columns `item,value,unit,source_title,source_url,page,year,notes`. No source means no row.
-- POWER rain before 2001 is not consistent with later years; recommendations, rankings and trends use 2001-2025 only. 1981-2000 is appendix-only until checked against another rain record.
+- Primary window = seasons 2001-2024 (IMERG starts 2001; its Final Run ends 2025-09-30). POWER 1981-2025 is appendix-only.
+- SMAP L4's rain forcing is corrected to IMERG, so model-vs-SMAP r is not independent evidence for IMERG.
 
 ## Task order (one per session; each with tests; commit on a branch and open a PR)
 1. `src/agents/guard.py`: extract numbers (including Bangla digits ০–৯) and allow a number only if it matches a cited tool-result value (with rounding tolerance). Tests must include **a fabricated number being blocked**.

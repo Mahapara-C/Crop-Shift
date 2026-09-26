@@ -1,0 +1,6 @@
+district,point_lat,point_lon,cell_lat,cell_lon,first_date,last_date,days,product,doi,access,source_url
+brahmanbaria,23.9571,91.1119,23.95,91.15,2001-01-01,2025-09-30,9039,GPM_3IMERGDF.07,10.5067/GPM/IMERGDF/DAY/07,https://api.giovanni.earthdata.nasa.gov/timeseries,https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGDF_07/summary
+cumilla,23.4607,91.1809,23.45,91.15,2001-01-01,2025-09-30,9039,GPM_3IMERGDF.07,10.5067/GPM/IMERGDF/DAY/07,https://api.giovanni.earthdata.nasa.gov/timeseries,https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGDF_07/summary
+feni,23.0159,91.3976,23.05,91.35,2001-01-01,2025-09-30,9039,GPM_3IMERGDF.07,10.5067/GPM/IMERGDF/DAY/07,https://api.giovanni.earthdata.nasa.gov/timeseries,https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGDF_07/summary
+noakhali,22.8696,91.0995,22.85,91.05,2001-01-01,2025-09-30,9039,GPM_3IMERGDF.07,10.5067/GPM/IMERGDF/DAY/07,https://api.giovanni.earthdata.nasa.gov/timeseries,https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGDF_07/summary
+sylhet,24.8949,91.8687,24.85,91.85,2001-01-01,2025-09-30,9039,GPM_3IMERGDF.07,10.5067/GPM/IMERGDF/DAY/07,https://api.giovanni.earthdata.nasa.gov/timeseries,https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGDF_07/summary

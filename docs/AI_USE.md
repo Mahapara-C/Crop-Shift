@@ -204,8 +204,33 @@ had already been deleted. `python -m pytest src -q` passes unchanged
 (102 tests; no test values changed since Task 5b's fix, only the report
 layout).
 
+**Claude Code** — Task 5d, switched rain to NASA GPM IMERG. Wrote
+`scripts/fetch_imerg.py` (IMERG V07 Final Run daily, GPM_3IMERGDF.07,
+through the NASA Giovanni time-series API, the first access method that
+worked; resumable; token read from `.env`, never printed). It downloaded
+2001-01-01 to 2025-09-30 (the Final Run's last day at GES DISC) for the five
+district points in about 6.5 minutes and records each 0.1 degree cell centre in
+`data/processed/imerg_cells.csv`. Added `src/compute/weather.py`
+(`load_weather()`: POWER table with IMERG rain, never mixing the two rain
+records) and `src/compute/change_point.py` (Pettitt test), each with tests.
+`scripts/check_rain_source.py` writes `docs/results/rain_source_check.md`:
+POWER rain has a significant change point around 2014-15 in all 10
+district series (annual and Jun-Sep, +38% to +84%); IMERG has none (every
+p > 0.5). The decision rule was fixed in the script before the results
+were seen. Added BMD station monthly normals from BMD's own PDF to
+`data/reference/bmd_normal_rainfall.csv`. IMERG is now the default rain
+source for `validate_water_balance.py`, `run_hindcast.py` (primary window
+now seasons 2001-2024; POWER 1981-2025 kept for the appendix) and the agent
+tools (which also now refuse to match on a year cut off before the
+decision date). SMAP weekly-anomaly r rose in every district (mean 0.44 ->
+0.56). Claude checked the SMAP L4 user guide and flagged that SMAP L4's rain
+forcing is corrected to IMERG, so this gain is not independent evidence.
+The POWER "+458 mm/decade Jun-Sep" trend is gone with IMERG (+1.8
+mm/decade, p = 1.00) and was removed. `python -m pytest src -q`: 115 passed.
+
 ## Data sources
-All NASA/scientific data used is from NASA POWER, NASA SMAP (via AppEEARS),
+All NASA/scientific data used is from NASA POWER, NASA GPM IMERG (via
+Giovanni), NASA SMAP (via AppEEARS), BMD station normals,
 and FAO-56 (Allen et al., 1998) reference values — see README and inline
 docstrings in `src/compute/agroclimate.py` for exact citations per number.
 ## Review log

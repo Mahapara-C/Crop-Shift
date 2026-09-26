@@ -7,7 +7,9 @@ the whole point of this layer is being the thing that touches real data.
 """
 
 import pytest
-from tool_functions import tool_nearest_analog_year, tool_backtest_rotation, SMAP_FIRST_YEAR
+import pandas as pd
+from tool_functions import (tool_nearest_analog_year, tool_backtest_rotation, SMAP_FIRST_YEAR,
+                            candidate_years)
 
 
 CURRENT_SEASON = {"onset_doy": 150, "onset_amount_mm": 40.0,
@@ -45,6 +47,22 @@ def test_nearest_analog_year_overall_pool_is_larger_than_soil_moisture_pool():
     SMAP-covered subset (2015+) for real district data."""
     result = tool_nearest_analog_year("cumilla", CURRENT_SEASON)
     assert result["years_compared"] > result["years_compared_with_soil_moisture"]
+
+
+def test_candidate_years_drop_a_year_cut_off_before_the_decision_date():
+    """IMERG Final Run ends 30 Sep 2025: 2025 must not be matched on a
+    season that stops a month before the 31 Oct decision date."""
+    weather = pd.DataFrame({"rainfall_mm": 0.0},
+                           index=pd.date_range("2001-01-01", "2025-09-30"))
+    years = candidate_years(weather, "10-31")
+    assert years[0] == 2001 and years[-1] == 2024
+    assert candidate_years(weather, "09-30")[-1] == 2025
+
+
+def test_nearest_analog_year_cites_rain_and_power():
+    result = tool_nearest_analog_year("cumilla", CURRENT_SEASON)
+    datasets = " ".join(s["dataset"] for s in result["sources"])
+    assert "IMERG" in datasets and "POWER" in datasets
 
 
 # ---------------- tool_backtest_rotation ----------------
