@@ -269,6 +269,28 @@ headline earliest-sowing-date uses the SMAP-only date with DSWx-S1 flagged
 as inconclusive, instead of silently combining a likely-spurious "still
 flooded" reading into the number. `python -m pytest src -q`: 133 passed.
 
+**Claude Code** — Task 7a-2, making the DSWx-S1 flood signal visible. Added
+an `--area` mode to `scripts/fetch_dswx.py`. It reads a 20 km x 20 km
+window (30 m UTM grid, WarpedVRT range reads, no full tiles) from every
+DSWx-S1 granule touching it. It covers the flood period (2024-08-21 to
+2024-12-31) and a dry-season reference (Jan-Mar 2025), caches the windows in
+`cache/` (gitignored), and builds `data/processed/dswx_area_<district>.csv`
+plus 8 small PNG maps (Feni, Noakhali) in `docs/results/img/`. Timed 5 reads
+first (~4.0 s/granule; 702 granules, ~47 min estimated, 41 min actual, 0
+failures). Wrote `src/compute/flood_area.py` (merge same-day granules,
+permanent-water mask, flood stats) with `test_flood_area.py`. Added
+`flood_recession()` to `post_flood.py` and let `earliest_sowing_date()`
+take its result, with 7 new tests. The plain "below 10% of peak" rule never
+triggered at Cumilla or Noakhali, because the method sees a floor of
+non-permanent water even in the dry season. So `flood_recession()` also
+takes an optional `baseline` (the default of 0 keeps the plain rule), and
+the report headlines "90% of the water above the dry-season floor gone",
+showing the plain-rule result next to it. Claude flagged that Noakhali's
+DSWx-S1 signal can't be separated from seasonal water, and that
+Brahmanbaria's is mostly seasonal drawdown, rather than presenting them as
+flood recession. Added `matplotlib` to `requirements.txt`.
+`python -m pytest src -q`: 147 passed.
+
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA GPM IMERG (via
 Giovanni), NASA SMAP (via AppEEARS), OPERA DSWx-S1 (via NASA CMR/earthaccess),
