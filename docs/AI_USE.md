@@ -228,11 +228,53 @@ forcing is corrected to IMERG, so this gain is not independent evidence.
 The POWER "+458 mm/decade Jun-Sep" trend is gone with IMERG (+1.8
 mm/decade, p = 1.00) and was removed. `python -m pytest src -q`: 115 passed.
 
+**Claude Code** — Task 7a, the post-flood recovery clock. Wrote
+`src/compute/post_flood.py`: `smap_days_to_normal()` (a calendar-window
+percentile of every *other* year, held for `hold_days` in a row, with 70th/
+90th percentile sensitivity reported alongside the 80th), `water_persistence()`
+(last date OPERA DSWx-S1 saw open water/inundated vegetation in a window,
+plus how many observations were usable), `earliest_sowing_date()` (the later
+of the two, no extra buffer), and `crops_still_possible()` (compares against
+`data/reference/crop_calendar.csv`, which does not exist yet, so every crop
+comes back "research pending" rather than an invented sowing window — this
+is the honest, unfinished half of the flood -> late-sowing -> risk cascade;
+the re-ranking half needs Task 6's `risk_calendar.py`, not built yet). Wrote
+`test_post_flood.py` (18 tests: synthetic recovery curves, the hold-days
+requirement, percentile sensitivity ordering, DSWx-S1 validity filtering,
+the "research pending" path for a missing file and a missing crop row).
+
+Wrote `scripts/fetch_dswx.py`: searches NASA CMR via `earthaccess` for OPERA
+DSWx-S1 granules near a point, then reads only a 300 m x 300 m window of the
+WTR band per granule via an HTTPS range request (`rasterio` + `earthaccess`'s
+authenticated fsspec session) — never a full scene, and nothing raster ever
+touches disk or git. Looked up the actual WTR band value codes (0/1/3 = not
+water/open water/inundated vegetation, 250/251 = HAND/layover-shadow masked,
+255 = fill) from the OPERA DSWx-S1 product spec and PO.DAAC docs rather than
+guessing. Timed 5 real granule reads (~4.1 s each; ~3.4-3.5 s/granule once
+warmed up) before running the fetch, and reported the full-history estimate
+(1,616 granules, ~94 minutes) versus what was actually fetched (315
+granules through 2024-12-31, ~18 minutes) in `docs/results/post_flood.md`,
+rather than running the full fetch unasked. Added `earthaccess` and
+`rasterio` to `requirements.txt` and `EARTHDATA_TOKEN` to `.env.example`
+(it was already required by the existing `scripts/fetch_imerg.py` but
+missing from the example file).
+
+Ran the pipeline for August 2024 (Feni, Cumilla, Noakhali, Brahmanbaria) and
+June 2022 (Sylhet, SMAP-only — DSWx-S1's mission data starts 2023-12-01,
+after that flood) and wrote up the results, including a caveat that
+DSWx-S1's persistent small water_fraction at the Noakhali and Brahmanbaria
+district points looks like a permanent water feature (pond/khal) inside the
+300 m window rather than draining floodwater, so those two districts'
+headline earliest-sowing-date uses the SMAP-only date with DSWx-S1 flagged
+as inconclusive, instead of silently combining a likely-spurious "still
+flooded" reading into the number. `python -m pytest src -q`: 133 passed.
+
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA GPM IMERG (via
-Giovanni), NASA SMAP (via AppEEARS), BMD station normals,
-and FAO-56 (Allen et al., 1998) reference values — see README and inline
-docstrings in `src/compute/agroclimate.py` for exact citations per number.
+Giovanni), NASA SMAP (via AppEEARS), OPERA DSWx-S1 (via NASA CMR/earthaccess),
+BMD station normals, and FAO-56 (Allen et al., 1998) reference values — see
+README and inline docstrings in `src/compute/agroclimate.py` for exact
+citations per number.
 ## Review log
 
 - **External review by a second Claude session** of the agent-layer code
