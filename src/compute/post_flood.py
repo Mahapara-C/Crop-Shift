@@ -10,6 +10,8 @@ Two independent signals, both NASA:
     held for several days so a single dry reading doesn't count.
   - water_persistence(): OPERA DSWx-S1 says when standing water was last
     seen near the point.
+  - flood_recession() (Task 7a-2): over a 20 km x 20 km DSWx-S1 area, the
+    flood-water peak and when it fell below 10% of that peak.
 
 earliest_sowing_date() takes the later of the two (soil dry AND water gone).
 crops_still_possible() then checks that date against data/reference/
@@ -151,12 +153,62 @@ def water_persistence(dswx_df, water_threshold=0.1, valid_threshold=0.5,
     }
 
 
+def flood_recession(dswx_area_df, fraction_of_peak=0.10, hold_scenes=2, valid_threshold=0.5,
+                    baseline=0.0, value_col="flood_km2", date_col="date",
+                    valid_col="valid_fraction"):
+    """
+    Task 7a-2: when did FLOOD water over an area (scripts/fetch_dswx.py
+    --area: date, flood_km2, flood_fraction, valid_fraction, n_scenes) drain?
+
+    Only scenes with valid_fraction >= valid_threshold are used. The peak is
+    the largest `value_col`; "mostly gone" is the first scene after the peak
+    below fraction_of_peak x peak, staying below it for hold_scenes scenes in
+    a row (so one low reading between passes doesn't count).
+
+    baseline (default 0): the level of "flood" water the method reports with
+    no flood at all (e.g. the median over dry-season reference scenes: wet
+    paddies, radar speckle). With a baseline the threshold becomes
+    baseline + fraction_of_peak x (peak - baseline), i.e. 90% of the water
+    ABOVE that floor has gone. baseline=0 is the plain 10%-of-peak rule.
+
+    Returns {"peak_date", "peak_value", "threshold", "water_gone_date",
+    "days_peak_to_gone", "scenes_used"}; water_gone_date and
+    days_peak_to_gone are None if the flood never receded in the data.
+    """
+    df = dswx_area_df.copy()
+    df[date_col] = pd.to_datetime(df[date_col])
+    df = df[df[valid_col] >= valid_threshold].sort_values(date_col).reset_index(drop=True)
+    if df.empty:
+        raise ValueError("no scenes with valid_fraction >= valid_threshold")
+    peak_idx = int(df[value_col].idxmax())
+    peak_date, peak_value = df.loc[peak_idx, date_col], float(df.loc[peak_idx, value_col])
+    threshold = baseline + fraction_of_peak * (peak_value - baseline)
+
+    gone_date, run = None, 0
+    after = df.iloc[peak_idx + 1:]
+    for i, value in enumerate(after[value_col]):
+        run = run + 1 if value < threshold else 0
+        if run >= hold_scenes:
+            gone_date = after.iloc[i - hold_scenes + 1][date_col]
+            break
+    return {
+        "peak_date": str(peak_date.date()),
+        "peak_value": peak_value,
+        "threshold": threshold,
+        "water_gone_date": str(gone_date.date()) if gone_date is not None else None,
+        "days_peak_to_gone": int((gone_date - peak_date).days) if gone_date is not None else None,
+        "scenes_used": int(len(df)),
+    }
+
+
 def earliest_sowing_date(days_to_normal_result, water_persistence_result):
     """
     The later of: soil back to normal (days_to_normal_result["normal_date"])
-    and water gone (the day after water_persistence_result["last_water_date"],
-    the last day water was confirmed present -- no other buffer is added,
-    per CLAUDE.md: no extra buffer unless it is sourced from data/reference/).
+    and water gone. Water gone is either flood_recession()'s
+    "water_gone_date" (area mode: flood water mostly gone), or else the day
+    after water_persistence()'s "last_water_date" (the last day water was
+    confirmed present) -- no other buffer is added, per CLAUDE.md: no extra
+    buffer unless it is sourced from data/reference/.
 
     If water was never observed, soil moisture is the only constraint. None
     if soil moisture never reached normal in the data.
@@ -165,6 +217,11 @@ def earliest_sowing_date(days_to_normal_result, water_persistence_result):
     if normal_date is None:
         return None
     soil_date = pd.Timestamp(normal_date)
+    if "water_gone_date" in water_persistence_result:
+        gone = water_persistence_result["water_gone_date"]
+        if gone is None:
+            return None  # flood water never receded in the data: no date to give
+        return str(max(soil_date, pd.Timestamp(gone)).date())
     last_water = water_persistence_result.get("last_water_date")
     if last_water is None:
         return str(soil_date.date())

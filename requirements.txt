@@ -7,3 +7,4 @@ python-dotenv>=1
 openai>=1
 earthaccess>=0.19
 rasterio>=1.5
+matplotlib>=3
