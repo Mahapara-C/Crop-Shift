@@ -329,6 +329,32 @@ problem share, then worst-20% irrigation); this only adds the label.
 5 skipped (one new test: a crop with 0 problems but partial coverage gets
 the partial label and notice).
 
+**Claude Code**: Task 10a, the first real API (`app.py`, FastAPI). The endpoints
+`/districts`, `/advisory` (`prev_harvest`, optional `flood_ready`), `/risk-calendar`,
+`/post-flood` and `/field-twin` are built only from existing `src/compute`
+functions (`rotation_options`, the `risk_calendar.csv` rows, `smap_days_to_normal`,
+`flood_recession`, `earliest_sowing_date`, `load_weather` + `crop_season`). Each
+response uses the contract envelope. Every number is a `{value, unit, src}`
+measure that points to a provenance entry with a dataset and URL: IMERG, POWER,
+SMAP, OPERA DSWx-S1, FAO-56, and each `data/reference/` source by id. Narration is
+a template sentence checked by `guard()`, with a number-free fallback.
+Coverage is always stated as "Checked: …" plus "Not all risks for this crop are
+checked yet.", so `rotation_options`' "full"/"partial" label is never sent.
+`/enso-lens`, `/warnings` and `/ask` serve the mock with `is_mock: true`. One
+compute change: `post_flood._days_to_normal()` now stops at the first qualifying
+7-day run instead of scanning to the end of the SMAP record. The answer is the same
+(the Aug-2024 values for all 4 districts still match `docs/results/post_flood.md`)
+and it runs in ~2 s instead of ~31 s. Weather and the demo floods are
+warmed at startup (~13 s), so warm requests take 0.02-0.06 s, and a new flood date
+takes ~2 s once. New contract tests are in `src/api/test_app.py` (81). Contract
+differences are proposed in `docs/contract_change_proposals.md`; the shared
+`docs/api_contract.md` and `web/mock/` were not edited. Bangla strings need
+review by a Bangla speaker. Known limitation (compute, not fixed here):
+`rotation_options()` puts a June/July ready date at the end of the previous
+Aug-Jul season, so every rabi window reads as passed (e.g. Sylhet flood of
+2022-06-17). The API shows a notice for it. `python -m pytest src -q`: 273 passed,
+5 skipped.
+
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA GPM IMERG (via
 Giovanni), NASA SMAP (via AppEEARS), OPERA DSWx-S1 (via NASA CMR/earthaccess),
