@@ -254,6 +254,13 @@ def crops_still_possible(earliest_date, district, crops=None, path=CROP_CALENDAR
         return {"possible": [], "pending": pending}
 
     calendar = pd.read_csv(path)
+    if not {"crop", "district", "sow_window_end"} <= set(calendar.columns):
+        # The researched file uses the item,value reference format; windows
+        # from it are read by risk_calendar.rotation_options() instead.
+        pending = [{"crop": c, "notice": "crop_calendar.csv is in item/value format: use "
+                                          "risk_calendar.rotation_options() for sowing windows"}
+                   for c in (crops or [])]
+        return {"possible": [], "pending": pending}
     calendar = calendar[calendar["district"] == district]
     check_crops = crops if crops is not None else sorted(calendar["crop"].unique())
 
