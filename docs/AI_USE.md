@@ -313,6 +313,22 @@ with BBS area. It also fixed a pre-existing failing test: `post_flood.py`'s
 crash on the real file, so it now returns a clear pending notice.
 `python -m pytest src -q`: 191 passed, 5 skipped.
 
+**Claude Code** — Task 6b, hazard coverage labelling in
+`rotation_options()`. Every ranked crop now carries `hazards_checked` /
+`hazards_missing` (lists), `n_hazards_checked`, `coverage` ("full" only if
+every hazard `HAZARDS` lists for that crop is sourced, else "partial") and
+`problem_line`, a plain-language sentence that always names what was
+checked, e.g. "problems in 0 of 24 years (checked: night heat only)", so a
+crop is never read as safer just because fewer hazards were evaluated for
+it. Partial-coverage crops get `coverage_notice`: "Not all risks for this
+crop are checked yet." The ranking order itself is unchanged (still
+problem share, then worst-20% irrigation); this only adds the label.
+`scripts/build_risk_calendar.py`'s "problem years" cell now uses
+`problem_line` directly and a new "coverage" column was added.
+`data/reference/` was not touched. `python -m pytest src -q`: 192 passed,
+5 skipped (one new test: a crop with 0 problems but partial coverage gets
+the partial label and notice).
+
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA GPM IMERG (via
 Giovanni), NASA SMAP (via AppEEARS), OPERA DSWx-S1 (via NASA CMR/earthaccess),

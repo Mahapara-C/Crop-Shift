@@ -332,6 +332,35 @@ def test_district_area_is_information(tmp_path):
                                                     "source_url": URL, "page": "1"}}
 
 
+def test_partial_coverage_crop_is_labelled_even_with_zero_problems():
+    def cal_row(crop, md, assessed, missing, start="11-01", end="11-30"):
+        return {"district": "testland", "crop": crop, "sowing_mmdd": md,
+                "sow_offset": season_offset(*(int(x) for x in md.split("-"))),
+                "window_start": start, "window_end": end, "outside_window": False,
+                "hazards_assessed": assessed, "hazards_missing": missing, "n_years": 24,
+                "problem_years": 0, "problem_share": 0.0,
+                "irrigation_mm_mean": 100.0, "irrigation_mm_worst20": 100.0,
+                "stress_days_mean": 5.0, "maturity_days_median": 100.0}
+    cal = pd.DataFrame([
+        cal_row("mustard", "11-08", "waterlog", "heat_flowering"),  # one hazard missing
+        cal_row("potato", "11-08", "night_heat_tuber", ""),         # every hazard sourced
+    ])
+    out = rotation_options("testland", "2024-11-01", calendar=cal)
+    mustard = [o for o in out["options"] if o["crop"] == "mustard"][0]
+    potato = [o for o in out["options"] if o["crop"] == "potato"][0]
+
+    assert mustard["problem_share"] == 0.0                          # 0 problems, but...
+    assert mustard["coverage"] == "partial"                         # ...not shown as fully safe
+    assert mustard["coverage_notice"] == "Not all risks for this crop are checked yet."
+    assert mustard["hazards_checked"] == ["waterlog"]
+    assert mustard["hazards_missing"] == ["heat_flowering"]
+    assert mustard["n_hazards_checked"] == 1
+    assert mustard["problem_line"] == "problems in 0 of 24 years (checked: waterlogging only)"
+
+    assert potato["coverage"] == "full" and potato["coverage_notice"] is None
+    assert potato["hazards_missing"] == []
+
+
 def test_rotation_waits_for_the_window_to_open():
     out = rotation_options("testland", "2024-11-01", calendar=_calendar())
     assert out["earliest_sowing_date"] == "2024-11-08"

@@ -354,6 +354,38 @@ def build_crop_specs(ref, crops=CROPS):
     return {crop: build_crop_spec(ref, crop) for crop in crops}
 
 
+HAZARD_LABELS = {
+    "heat_anthesis": "heat at flowering",
+    "heat_grainfill": "heat during grain fill",
+    "heat_flowering": "heat at flowering",
+    "waterlog": "waterlogging",
+    "night_heat_tuber": "night heat",
+    "cold_booting": "cold at booting",
+}
+
+
+def hazard_label(hazard):
+    return HAZARD_LABELS.get(hazard, hazard.replace("_", " "))
+
+
+def hazards_checked_text(hazards_checked):
+    """'X only' / 'X, Y' for the plain-language problem line."""
+    labels = [hazard_label(h) for h in hazards_checked]
+    return f"{labels[0]} only" if len(labels) == 1 else ", ".join(labels)
+
+
+def problem_line(sowing_date, problem_years, n_years, hazards_checked):
+    """Plain-language line for a ranked crop that always says which hazards
+    were checked, e.g. 'problems in 0 of 24 years (checked: night heat
+    only)' (CLAUDE.md: never imply safety beyond what was checked)."""
+    if sowing_date is None:
+        return "no date: more than 4 weeks past the window"
+    if not hazards_checked:
+        return "not assessed (no sourced hazard)"
+    return (f"problems in {problem_years} of {n_years} years "
+            f"(checked: {hazards_checked_text(hazards_checked)})")
+
+
 def threshold_value(hazard, end):
     """The threshold to use: 'onset' = the milder end of a cited range (low
     for heat and waterlogging, high for cold), 'severe' = the other end."""
@@ -709,6 +741,13 @@ def rotation_options(district, previous_crop_harvest_date, earliest_ready_date=N
     rest. If planned_next_crop is given, each option is checked: does it
     reach (median) maturity before that crop's window_end?
 
+    Every option carries hazards_checked/hazards_missing (lists),
+    n_hazards_checked, coverage ("full" only if every hazard HAZARDS lists
+    for that crop is sourced, else "partial" with coverage_notice set), and
+    problem_line, a plain-language sentence that always names what was
+    checked so a crop is never read as "safer" just because fewer hazards
+    were evaluated for it.
+
     calendar: a build_calendar() DataFrame (default: data/processed/
     risk_calendar.csv).
     """
@@ -739,14 +778,23 @@ def rotation_options(district, previous_crop_harvest_date, earliest_ready_date=N
         window_start = tuple(int(x) for x in rows.iloc[0]["window_start"].split("-"))
         window_end = tuple(int(x) for x in rows.iloc[0]["window_end"].split("-"))
         later = rows[rows["sow_offset"] >= max(earliest_offset, season_offset(*window_start))]
+        hazards_assessed_str = (rows.iloc[0]["hazards_assessed"]
+                                if isinstance(rows.iloc[0]["hazards_assessed"], str) else "")
+        hazards_missing_str = (rows.iloc[0]["hazards_missing"]
+                               if isinstance(rows.iloc[0]["hazards_missing"], str) else "")
+        hazards_checked = [h for h in hazards_assessed_str.split(";") if h]
+        hazards_missing = [h for h in hazards_missing_str.split(";") if h]
+        coverage = "full" if not hazards_missing else "partial"
+        coverage_notice = ("Not all risks for this crop are checked yet."
+                           if coverage == "partial" else None)
         option = {"crop": crop, "window": f"{rows.iloc[0]['window_start']} to {rows.iloc[0]['window_end']}",
                   "window_passed": bool(earliest_offset > season_offset(*window_end)),
                   "sowing_date": None, "outside_recommended_window": None,
                   "n_years": None, "problem_years": None, "problem_share": float("nan"),
-                  "hazards_assessed": rows.iloc[0]["hazards_assessed"]
-                  if isinstance(rows.iloc[0]["hazards_assessed"], str) else "",
-                  "hazards_missing": rows.iloc[0]["hazards_missing"]
-                  if isinstance(rows.iloc[0]["hazards_missing"], str) else "",
+                  "hazards_assessed": hazards_assessed_str,
+                  "hazards_checked": hazards_checked, "hazards_missing": hazards_missing,
+                  "n_hazards_checked": len(hazards_checked),
+                  "coverage": coverage, "coverage_notice": coverage_notice,
                   "irrigation_mm_mean": float("nan"), "irrigation_mm_worst20": float("nan"),
                   "stress_days_mean": float("nan"), "maturity_date": None,
                   "fits_before_next_crop": None}
@@ -770,6 +818,8 @@ def rotation_options(district, previous_crop_harvest_date, earliest_ready_date=N
                     if end_date <= sow:
                         end_date = season_date(season + 1, *next_end)
                     option["fits_before_next_crop"] = bool(maturity <= end_date)
+        option["problem_line"] = problem_line(option["sowing_date"], option["problem_years"],
+                                              option["n_years"], hazards_checked)
         options.append(option)
 
     options.sort(key=_rank_key)

@@ -26,53 +26,53 @@ Earliest sowing = harvest + 7 days turnaround (CropShift assumption), then the f
 
 ### Cumilla (earliest sowing Nov 22)
 
-| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | wheat | Nov 22 | 11-15 to 11-30 | no | no | 0 of 24 | heat_anthesis;heat_grainfill | 298 / 381 | 76 | Mar 07 | no | 496 |
-| 2 | potato | Nov 22 | 11-01 to 11-30 | no | no | 0 of 24 | night_heat_tuber | 361 / 422 | 118 | – | – | 9900 |
-| 3 | mustard | Nov 26 | 10-15 to 11-15 | yes | yes | 0 of 24 | waterlog | 243 / 293 | 50 | Mar 08 | no | – |
-| 4 | lentil | Nov 28 | 10-24 to 11-15 | yes | yes | 1 of 24 | heat_flowering;waterlog | 305 / 356 | 86 | Mar 23 | no | – |
-| – | boro_rice | Dec 05 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | 876 / 1010 | – | – | – | 156654 |
+| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | coverage | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | wheat | Nov 22 | 11-15 to 11-30 | no | no | problems in 0 of 24 years (checked: heat at flowering, heat during grain fill) | heat_anthesis;heat_grainfill | full | 298 / 381 | 76 | Mar 07 | no | 496 |
+| 2 | potato | Nov 22 | 11-01 to 11-30 | no | no | problems in 0 of 24 years (checked: night heat only) | night_heat_tuber | full | 361 / 422 | 118 | – | – | 9900 |
+| 3 | mustard | Nov 26 | 10-15 to 11-15 | yes | yes | problems in 0 of 24 years (checked: waterlogging only) | waterlog | partial — Not all risks for this crop are checked yet. | 243 / 293 | 50 | Mar 08 | no | – |
+| 4 | lentil | Nov 28 | 10-24 to 11-15 | yes | yes | problems in 1 of 24 years (checked: heat at flowering, waterlogging) | heat_flowering;waterlog | full | 305 / 356 | 86 | Mar 23 | no | – |
+| – | boro_rice | Dec 05 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | – | 876 / 1010 | – | – | – | 156654 |
 
 ### Noakhali (earliest sowing Nov 22)
 
-| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | wheat | Nov 22 | 11-15 to 11-30 | no | no | 0 of 24 | heat_anthesis;heat_grainfill | 311 / 377 | 78 | Mar 07 | no | 56 |
-| 2 | potato | Nov 22 | 11-01 to 11-30 | no | no | 0 of 24 | night_heat_tuber | 364 / 417 | 120 | – | – | 256 |
-| 3 | mustard | Nov 26 | 10-15 to 11-15 | yes | yes | 0 of 24 | waterlog | 243 / 310 | 52 | Mar 08 | no | – |
-| 4 | lentil | Nov 28 | 10-24 to 11-15 | yes | yes | 1 of 24 | heat_flowering;waterlog | 306 / 355 | 86 | Mar 24 | no | – |
-| – | boro_rice | Dec 05 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | 909 / 1025 | – | – | – | 75631 |
+| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | coverage | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | wheat | Nov 22 | 11-15 to 11-30 | no | no | problems in 0 of 24 years (checked: heat at flowering, heat during grain fill) | heat_anthesis;heat_grainfill | full | 311 / 377 | 78 | Mar 07 | no | 56 |
+| 2 | potato | Nov 22 | 11-01 to 11-30 | no | no | problems in 0 of 24 years (checked: night heat only) | night_heat_tuber | full | 364 / 417 | 120 | – | – | 256 |
+| 3 | mustard | Nov 26 | 10-15 to 11-15 | yes | yes | problems in 0 of 24 years (checked: waterlogging only) | waterlog | partial — Not all risks for this crop are checked yet. | 243 / 310 | 52 | Mar 08 | no | – |
+| 4 | lentil | Nov 28 | 10-24 to 11-15 | yes | yes | problems in 1 of 24 years (checked: heat at flowering, waterlogging) | heat_flowering;waterlog | full | 306 / 355 | 86 | Mar 24 | no | – |
+| – | boro_rice | Dec 05 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | – | 909 / 1025 | – | – | – | 75631 |
 
 ### Feni (earliest sowing Nov 22)
 
-| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | wheat | Nov 22 | 11-15 to 11-30 | no | no | 0 of 24 | heat_anthesis;heat_grainfill | 294 / 349 | 77 | Mar 07 | no | 52 |
-| 2 | potato | Nov 22 | 11-01 to 11-30 | no | no | 0 of 24 | night_heat_tuber | 351 / 410 | 119 | – | – | 348 |
-| 3 | mustard | Nov 26 | 10-15 to 11-15 | yes | yes | 0 of 24 | waterlog | 236 / 277 | 50 | Mar 08 | no | – |
-| 4 | lentil | Nov 28 | 10-24 to 11-15 | yes | yes | 1 of 24 | heat_flowering;waterlog | 299 / 358 | 85 | Mar 24 | no | – |
-| – | boro_rice | Dec 05 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | 883 / 1011 | – | – | – | 31021 |
+| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | coverage | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | wheat | Nov 22 | 11-15 to 11-30 | no | no | problems in 0 of 24 years (checked: heat at flowering, heat during grain fill) | heat_anthesis;heat_grainfill | full | 294 / 349 | 77 | Mar 07 | no | 52 |
+| 2 | potato | Nov 22 | 11-01 to 11-30 | no | no | problems in 0 of 24 years (checked: night heat only) | night_heat_tuber | full | 351 / 410 | 119 | – | – | 348 |
+| 3 | mustard | Nov 26 | 10-15 to 11-15 | yes | yes | problems in 0 of 24 years (checked: waterlogging only) | waterlog | partial — Not all risks for this crop are checked yet. | 236 / 277 | 50 | Mar 08 | no | – |
+| 4 | lentil | Nov 28 | 10-24 to 11-15 | yes | yes | problems in 1 of 24 years (checked: heat at flowering, waterlogging) | heat_flowering;waterlog | full | 299 / 358 | 85 | Mar 24 | no | – |
+| – | boro_rice | Dec 05 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | – | 883 / 1011 | – | – | – | 31021 |
 
 ### Brahmanbaria (earliest sowing Nov 22)
 
-| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | potato | Nov 22 | 11-01 to 11-30 | no | no | 0 of 24 | night_heat_tuber | 369 / 438 | 120 | – | – | 1029 |
-| 2 | wheat | Nov 22 | 11-15 to 11-30 | no | no | 1 of 24 | heat_anthesis;heat_grainfill | 312 / 396 | 77 | Mar 07 | no | 841 |
-| 3 | mustard | Nov 26 | 10-15 to 11-15 | yes | yes | 0 of 24 | waterlog | 254 / 326 | 53 | Mar 07 | no | – |
-| 4 | lentil | Nov 28 | 10-24 to 11-15 | yes | yes | 1 of 24 | heat_flowering;waterlog | 316 / 378 | 86 | Mar 24 | no | – |
-| – | boro_rice | Dec 05 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | 1170 / 1309 | – | – | – | 111243 |
+| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | coverage | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | potato | Nov 22 | 11-01 to 11-30 | no | no | problems in 0 of 24 years (checked: night heat only) | night_heat_tuber | full | 369 / 438 | 120 | – | – | 1029 |
+| 2 | wheat | Nov 22 | 11-15 to 11-30 | no | no | problems in 1 of 24 years (checked: heat at flowering, heat during grain fill) | heat_anthesis;heat_grainfill | full | 312 / 396 | 77 | Mar 07 | no | 841 |
+| 3 | mustard | Nov 26 | 10-15 to 11-15 | yes | yes | problems in 0 of 24 years (checked: waterlogging only) | waterlog | partial — Not all risks for this crop are checked yet. | 254 / 326 | 53 | Mar 07 | no | – |
+| 4 | lentil | Nov 28 | 10-24 to 11-15 | yes | yes | problems in 1 of 24 years (checked: heat at flowering, waterlogging) | heat_flowering;waterlog | full | 316 / 378 | 86 | Mar 24 | no | – |
+| – | boro_rice | Dec 05 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | – | 1170 / 1309 | – | – | – | 111243 |
 
 ### Sylhet (earliest sowing Nov 22)
 
-| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | wheat | Nov 22 | 11-15 to 11-30 | no | no | 0 of 24 | heat_anthesis;heat_grainfill | 276 / 344 | 83 | Mar 07 | no | 261 |
-| 2 | potato | Nov 22 | 11-01 to 11-30 | no | no | 0 of 24 | night_heat_tuber | 318 / 374 | 118 | – | – | 1240 |
-| 3 | mustard | Nov 26 | 10-15 to 11-15 | yes | yes | 0 of 24 | waterlog | 215 / 287 | 50 | Mar 11 | no | – |
-| 4 | lentil | Nov 28 | 10-24 to 11-15 | yes | yes | 0 of 24 | heat_flowering;waterlog | 272 / 328 | 88 | Mar 25 | no | – |
-| – | boro_rice | Dec 05 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | 1014 / 1159 | – | – | – | 85478 |
+| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | coverage | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | wheat | Nov 22 | 11-15 to 11-30 | no | no | problems in 0 of 24 years (checked: heat at flowering, heat during grain fill) | heat_anthesis;heat_grainfill | full | 276 / 344 | 83 | Mar 07 | no | 261 |
+| 2 | potato | Nov 22 | 11-01 to 11-30 | no | no | problems in 0 of 24 years (checked: night heat only) | night_heat_tuber | full | 318 / 374 | 118 | – | – | 1240 |
+| 3 | mustard | Nov 26 | 10-15 to 11-15 | yes | yes | problems in 0 of 24 years (checked: waterlogging only) | waterlog | partial — Not all risks for this crop are checked yet. | 215 / 287 | 50 | Mar 11 | no | – |
+| 4 | lentil | Nov 28 | 10-24 to 11-15 | yes | yes | problems in 0 of 24 years (checked: heat at flowering, waterlogging) | heat_flowering;waterlog | full | 272 / 328 | 88 | Mar 25 | no | – |
+| – | boro_rice | Dec 05 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | – | 1014 / 1159 | – | – | – | 85478 |
 
 ## Options after an aman harvest on Dec 05
 
@@ -80,53 +80,53 @@ Earliest sowing = harvest + 7 days turnaround (CropShift assumption), then the f
 
 ### Cumilla (earliest sowing Dec 12)
 
-| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | potato | Dec 13 | 11-01 to 11-30 | yes | yes | 0 of 24 | night_heat_tuber | 404 / 465 | 117 | – | – | 9900 |
-| 2 | lentil | Dec 12 | 10-24 to 11-15 | yes | yes | 11 of 24 | heat_flowering;waterlog | 336 / 415 | 90 | Apr 02 | no | – |
-| 3 | wheat | Dec 13 | 11-15 to 11-30 | yes | yes | 13 of 24 | heat_anthesis;heat_grainfill | 355 / 436 | 88 | Mar 23 | no | 496 |
-| – | mustard | – | 10-15 to 11-15 | yes | – | no date: more than 4 weeks past the window | waterlog | – / – | – | – | – | – |
-| – | boro_rice | Dec 12 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | 863 / 988 | – | – | – | 156654 |
+| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | coverage | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | potato | Dec 13 | 11-01 to 11-30 | yes | yes | problems in 0 of 24 years (checked: night heat only) | night_heat_tuber | full | 404 / 465 | 117 | – | – | 9900 |
+| 2 | lentil | Dec 12 | 10-24 to 11-15 | yes | yes | problems in 11 of 24 years (checked: heat at flowering, waterlogging) | heat_flowering;waterlog | full | 336 / 415 | 90 | Apr 02 | no | – |
+| 3 | wheat | Dec 13 | 11-15 to 11-30 | yes | yes | problems in 13 of 24 years (checked: heat at flowering, heat during grain fill) | heat_anthesis;heat_grainfill | full | 355 / 436 | 88 | Mar 23 | no | 496 |
+| – | mustard | – | 10-15 to 11-15 | yes | – | no date: more than 4 weeks past the window | waterlog | partial — Not all risks for this crop are checked yet. | – / – | – | – | – | – |
+| – | boro_rice | Dec 12 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | – | 863 / 988 | – | – | – | 156654 |
 
 ### Noakhali (earliest sowing Dec 12)
 
-| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | potato | Dec 13 | 11-01 to 11-30 | yes | yes | 0 of 24 | night_heat_tuber | 412 / 479 | 120 | – | – | 256 |
-| 2 | wheat | Dec 13 | 11-15 to 11-30 | yes | yes | 5 of 24 | heat_anthesis;heat_grainfill | 367 / 444 | 92 | Mar 23 | no | 56 |
-| 3 | lentil | Dec 12 | 10-24 to 11-15 | yes | yes | 6 of 24 | heat_flowering;waterlog | 344 / 410 | 93 | Apr 02 | no | – |
-| – | mustard | – | 10-15 to 11-15 | yes | – | no date: more than 4 weeks past the window | waterlog | – / – | – | – | – | – |
-| – | boro_rice | Dec 12 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | 905 / 1027 | – | – | – | 75631 |
+| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | coverage | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | potato | Dec 13 | 11-01 to 11-30 | yes | yes | problems in 0 of 24 years (checked: night heat only) | night_heat_tuber | full | 412 / 479 | 120 | – | – | 256 |
+| 2 | wheat | Dec 13 | 11-15 to 11-30 | yes | yes | problems in 5 of 24 years (checked: heat at flowering, heat during grain fill) | heat_anthesis;heat_grainfill | full | 367 / 444 | 92 | Mar 23 | no | 56 |
+| 3 | lentil | Dec 12 | 10-24 to 11-15 | yes | yes | problems in 6 of 24 years (checked: heat at flowering, waterlogging) | heat_flowering;waterlog | full | 344 / 410 | 93 | Apr 02 | no | – |
+| – | mustard | – | 10-15 to 11-15 | yes | – | no date: more than 4 weeks past the window | waterlog | partial — Not all risks for this crop are checked yet. | – / – | – | – | – | – |
+| – | boro_rice | Dec 12 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | – | 905 / 1027 | – | – | – | 75631 |
 
 ### Feni (earliest sowing Dec 12)
 
-| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | potato | Dec 13 | 11-01 to 11-30 | yes | yes | 0 of 24 | night_heat_tuber | 395 / 460 | 118 | – | – | 348 |
-| 2 | wheat | Dec 13 | 11-15 to 11-30 | yes | yes | 5 of 24 | heat_anthesis;heat_grainfill | 350 / 429 | 90 | Mar 23 | no | 52 |
-| 3 | lentil | Dec 12 | 10-24 to 11-15 | yes | yes | 6 of 24 | heat_flowering;waterlog | 321 / 394 | 92 | Apr 02 | no | – |
-| – | mustard | – | 10-15 to 11-15 | yes | – | no date: more than 4 weeks past the window | waterlog | – / – | – | – | – | – |
-| – | boro_rice | Dec 12 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | 869 / 1004 | – | – | – | 31021 |
+| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | coverage | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | potato | Dec 13 | 11-01 to 11-30 | yes | yes | problems in 0 of 24 years (checked: night heat only) | night_heat_tuber | full | 395 / 460 | 118 | – | – | 348 |
+| 2 | wheat | Dec 13 | 11-15 to 11-30 | yes | yes | problems in 5 of 24 years (checked: heat at flowering, heat during grain fill) | heat_anthesis;heat_grainfill | full | 350 / 429 | 90 | Mar 23 | no | 52 |
+| 3 | lentil | Dec 12 | 10-24 to 11-15 | yes | yes | problems in 6 of 24 years (checked: heat at flowering, waterlogging) | heat_flowering;waterlog | full | 321 / 394 | 92 | Apr 02 | no | – |
+| – | mustard | – | 10-15 to 11-15 | yes | – | no date: more than 4 weeks past the window | waterlog | partial — Not all risks for this crop are checked yet. | – / – | – | – | – | – |
+| – | boro_rice | Dec 12 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | – | 869 / 1004 | – | – | – | 31021 |
 
 ### Brahmanbaria (earliest sowing Dec 12)
 
-| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | potato | Dec 13 | 11-01 to 11-30 | yes | yes | 0 of 24 | night_heat_tuber | 401 / 476 | 115 | – | – | 1029 |
-| 2 | lentil | Dec 12 | 10-24 to 11-15 | yes | yes | 15 of 24 | heat_flowering;waterlog | 335 / 420 | 91 | Apr 02 | no | – |
-| 3 | wheat | Dec 13 | 11-15 to 11-30 | yes | yes | 15 of 24 | heat_anthesis;heat_grainfill | 366 / 459 | 90 | Mar 23 | no | 841 |
-| – | mustard | – | 10-15 to 11-15 | yes | – | no date: more than 4 weeks past the window | waterlog | – / – | – | – | – | – |
-| – | boro_rice | Dec 12 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | 1159 / 1348 | – | – | – | 111243 |
+| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | coverage | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | potato | Dec 13 | 11-01 to 11-30 | yes | yes | problems in 0 of 24 years (checked: night heat only) | night_heat_tuber | full | 401 / 476 | 115 | – | – | 1029 |
+| 2 | lentil | Dec 12 | 10-24 to 11-15 | yes | yes | problems in 15 of 24 years (checked: heat at flowering, waterlogging) | heat_flowering;waterlog | full | 335 / 420 | 91 | Apr 02 | no | – |
+| 3 | wheat | Dec 13 | 11-15 to 11-30 | yes | yes | problems in 15 of 24 years (checked: heat at flowering, heat during grain fill) | heat_anthesis;heat_grainfill | full | 366 / 459 | 90 | Mar 23 | no | 841 |
+| – | mustard | – | 10-15 to 11-15 | yes | – | no date: more than 4 weeks past the window | waterlog | partial — Not all risks for this crop are checked yet. | – / – | – | – | – | – |
+| – | boro_rice | Dec 12 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | – | 1159 / 1348 | – | – | – | 111243 |
 
 ### Sylhet (earliest sowing Dec 12)
 
-| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | lentil | Dec 12 | 10-24 to 11-15 | yes | yes | 0 of 24 | heat_flowering;waterlog | 273 / 358 | 88 | Apr 04 | no | – |
-| 2 | potato | Dec 13 | 11-01 to 11-30 | yes | yes | 0 of 24 | night_heat_tuber | 321 / 391 | 107 | – | – | 1240 |
-| 3 | wheat | Dec 13 | 11-15 to 11-30 | yes | yes | 1 of 24 | heat_anthesis;heat_grainfill | 309 / 394 | 88 | Mar 24 | no | 261 |
-| – | mustard | – | 10-15 to 11-15 | yes | – | no date: more than 4 weeks past the window | waterlog | – / – | – | – | – | – |
-| – | boro_rice | Dec 12 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | 982 / 1120 | – | – | – | 85478 |
+| rank | crop | sow | window | window passed | outside window | problem years | hazards assessed | coverage | net irrigation mm (mean / worst20) | stress days (mean) | maturity | fits before boro | BBS area ha |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | lentil | Dec 12 | 10-24 to 11-15 | yes | yes | problems in 0 of 24 years (checked: heat at flowering, waterlogging) | heat_flowering;waterlog | full | 273 / 358 | 88 | Apr 04 | no | – |
+| 2 | potato | Dec 13 | 11-01 to 11-30 | yes | yes | problems in 0 of 24 years (checked: night heat only) | night_heat_tuber | full | 321 / 391 | 107 | – | – | 1240 |
+| 3 | wheat | Dec 13 | 11-15 to 11-30 | yes | yes | problems in 1 of 24 years (checked: heat at flowering, heat during grain fill) | heat_anthesis;heat_grainfill | full | 309 / 394 | 88 | Mar 24 | no | 261 |
+| – | mustard | – | 10-15 to 11-15 | yes | – | no date: more than 4 weeks past the window | waterlog | partial — Not all risks for this crop are checked yet. | – / – | – | – | – | – |
+| – | boro_rice | Dec 12 | 12-05 to 01-30 | no | no | not assessed (no sourced hazard) | none | – | 982 / 1120 | – | – | – | 85478 |
 
 ## Sanity checks (real data, thresholds not tuned)
 
