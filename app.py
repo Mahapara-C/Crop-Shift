@@ -1,0 +1,1286 @@
+"""
+app.py: the CropShift API, v1 (task 10a).
+
+FastAPI over the existing deterministic code in src/compute. No new science
+lives here: each endpoint calls compute functions, then packs their output
+into the envelope from docs/api_contract.md. Every number is a
+{value, unit, src} measure whose src ids point to a provenance entry with a
+dataset and URL, and every narration is a plain template sentence built from
+the data and checked by guard() (src/agents/guard.py).
+
+Real endpoints: /districts, /advisory, /risk-calendar, /post-flood,
+/field-twin. Not built yet (they serve the web/mock file with is_mock: true):
+/enso-lens, /warnings, /ask.
+
+Run locally (repo root): python -m uvicorn app:app --reload
+then open http://127.0.0.1:8000/docs
+"""
+
+import datetime as _dt
+import functools
+import glob
+import json
+import math
+import os
+import re
+import sys
+from contextlib import asynccontextmanager
+
+import numpy as np
+import pandas as pd
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+for _sub in (("src", "compute"), ("src", "agents")):
+    _path = os.path.join(ROOT, *_sub)
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
+
+import post_flood as pf  # noqa: E402
+import risk_calendar as rc  # noqa: E402
+from guard import guard  # noqa: E402
+from water_balance import crop_season, load_crop_params, load_soil_params  # noqa: E402
+from weather import RAIN_CITATIONS  # noqa: E402
+
+API_VERSION = "1.0"
+PROCESSED = os.path.join(ROOT, "data", "processed")
+REFERENCE = os.path.join(ROOT, "data", "reference")
+MOCK_DIR = os.path.join(ROOT, "web", "mock")
+REPO_URL = "https://github.com/Taaanha/Crop-Shift"
+BD_TZ = _dt.timezone(_dt.timedelta(hours=6))
+SOURCE_MODE = "cache"   # every real endpoint reads the processed archive in data/processed
+
+DISTRICTS = {
+    "cumilla": {"en": "Cumilla", "bn": "কুমিল্লা"},
+    "feni": {"en": "Feni", "bn": "ফেনী"},
+    "noakhali": {"en": "Noakhali", "bn": "নোয়াখালী"},
+    "brahmanbaria": {"en": "Brahmanbaria", "bn": "ব্রাহ্মণবাড়িয়া"},
+    "sylhet": {"en": "Sylhet", "bn": "সিলেট"},
+}
+POWER_CELL_SHARED = {"feni": ["noakhali"], "noakhali": ["feni"]}   # CLAUDE.md data facts
+CROP_NAMES = {
+    "wheat": {"en": "Wheat", "bn": "গম"},
+    "mustard": {"en": "Mustard", "bn": "সরিষা"},
+    "lentil": {"en": "Lentil", "bn": "মসুর"},
+    "potato": {"en": "Potato", "bn": "আলু"},
+    "boro_rice": {"en": "Boro rice", "bn": "বোরো ধান"},
+}
+HAZARD_BN = {
+    "heat_anthesis": "ফুল ফোটার সময় গরম",
+    "heat_grainfill": "দানা ভরার সময় গরম",
+    "heat_flowering": "ফুল ফোটার সময় গরম",
+    "waterlog": "জলাবদ্ধতা",
+    "night_heat_tuber": "আলু গঠনের সময় রাতের গরম",
+    "cold_booting": "থোড় আসার সময় ঠান্ডা",
+}
+# Crops the FAO-56 field-twin replay supports (boro uses the paddy bucket instead).
+FIELD_TWIN_CROPS = tuple(c for c, m in rc.WATER_MODEL.items() if m == "fao56")
+WATER_PARAM_CROP = {"boro_rice": "rice"}
+
+# CropShift assumptions used only by this API (not from a source), shown in responses.
+API_ASSUMPTIONS = {
+    "dswx_scene_lead_days": {
+        "value": 7, "unit": "days",
+        "text": "DSWx-S1 scenes up to this many days before the flood date are used "
+                "(a pass rarely falls on the exact flood day)."},
+    "dswx_peak_max_lag_days": {
+        "value": 30, "unit": "days",
+        "text": "If the largest DSWx-S1 flood-water reading comes more than this many days "
+                "after the flood date, it is not this flood (e.g. Noakhali's December "
+                "peak), so the water signal is reported as inconclusive and only SMAP is used."},
+    "dswx_dry_floor": {
+        "value": "median flood_fraction, 2025-01-01 to 2025-03-31", "unit": "",
+        "text": "Water the method sees with no flood (wet paddies, ponds, radar speckle). "
+                "'Water mostly gone' = 90% of the water above this floor has drained "
+                "(docs/results/post_flood.md)."},
+}
+
+NOT_ALL_CHECKED = {"en": "Not all risks for this crop are checked yet.",
+                   "bn": "এই ফসলের সব ঝুঁকি এখনও যাচাই করা হয়নি।"}
+AREA_NOTICE = {"level": "info",
+               "en": "NASA data for the area around your field (rain ~0.1°, temperature ~0.5°, "
+                     "soil moisture ~9 km), not the exact plot.",
+               "bn": "আপনার জমির আশেপাশের এলাকার NASA তথ্য (বৃষ্টি ~০.১°, তাপমাত্রা ~০.৫°, "
+                     "মাটির আর্দ্রতা ~৯ কিমি), নির্দিষ্ট জমির নয়।"}
+PAST_NOT_FORECAST = {"level": "info",
+                     "en": "These are counts over past seasons, not a forecast of this season.",
+                     "bn": "এগুলো অতীতের মৌসুমের হিসাব, এই মৌসুমের পূর্বাভাস নয়।"}
+WEATHER_RISKS_ONLY = {"level": "caution",
+                      "en": "Only the weather risks listed for each crop are checked. Pests, "
+                            "diseases, soil nutrients and prices are not.",
+                      "bn": "প্রতিটি ফসলের জন্য শুধু তালিকাভুক্ত আবহাওয়াজনিত ঝুঁকি যাচাই করা "
+                            "হয়েছে। পোকা, রোগ, মাটির পুষ্টি ও দাম যাচাই করা হয়নি।"}
+ALL_WINDOWS_PASSED = {"level": "caution",
+                      "en": "At this date every sowing window of this season (August to July) has "
+                            "passed. The next season's windows are not checked here yet.",
+                      "bn": "এই তারিখে এই মৌসুমের (আগস্ট থেকে জুলাই) সব বপনের সময় পেরিয়ে গেছে। "
+                            "পরের মৌসুমের সময় এখানে এখনও যাচাই করা হয়নি।"}
+SHARED_CELL_NOTICE = {"level": "caution",
+                      "en": "Feni and Noakhali use the same NASA POWER temperature cell "
+                            "(their IMERG rain cells are separate).",
+                      "bn": "ফেনী ও নোয়াখালী একই NASA POWER তাপমাত্রা গ্রিড ব্যবহার করে "
+                            "(IMERG বৃষ্টির গ্রিড আলাদা)।"}
+
+
+# ---------------- small helpers ----------------
+
+def bn_digits(text):
+    return str(text).translate(str.maketrans("0123456789", "০১২৩৪৫৬৭৮৯"))
+
+
+def _num(value, decimals=0):
+    """A JSON-safe rounded number, or None for missing values."""
+    if value is None:
+        return None
+    value = float(value)
+    if math.isnan(value):
+        return None
+    if decimals == 0:
+        return int(round(value))
+    return round(value, decimals)
+
+
+def measure(value, unit, src, decimals=0):
+    return {"value": _num(value, decimals), "unit": unit, "src": list(dict.fromkeys(src))}
+
+
+def _fmt(value):
+    """The number exactly as the data holds it (so guard() finds it)."""
+    return f"{value:g}" if isinstance(value, float) else str(value)
+
+
+def _clean(obj):
+    """numpy / pandas values -> plain JSON types; NaN -> None."""
+    if isinstance(obj, dict):
+        return {k: _clean(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_clean(v) for v in obj]
+    if isinstance(obj, (bool, np.bool_)):
+        return bool(obj)
+    if isinstance(obj, (np.integer,)):
+        return int(obj)
+    if isinstance(obj, (float, np.floating)):
+        return None if math.isnan(float(obj)) else float(obj)
+    if isinstance(obj, pd.Timestamp):
+        return str(obj.date())
+    return obj
+
+
+def _src_ids(obj, out):
+    """Collects every src id used anywhere in data."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k == "src" and isinstance(v, list):
+                out.extend(v)
+            else:
+                _src_ids(v, out)
+    elif isinstance(obj, list):
+        for v in obj:
+            _src_ids(v, out)
+    return out
+
+
+class ApiError(Exception):
+    STATUS = {"DISTRICT_NOT_COVERED": 400, "BAD_PARAMETER": 400,
+              "NO_DATA_FOR_PERIOD": 404, "INTERNAL": 500}
+    BN = {"DISTRICT_NOT_COVERED": "CropShift এখন কুমিল্লা, ফেনী, ব্রাহ্মণবাড়িয়া, নোয়াখালী ও "
+                                  "সিলেট অঞ্চলে কাজ করে।",
+          "BAD_PARAMETER": "অনুরোধের একটি তথ্য ঠিক নেই: {detail}",
+          "NO_DATA_FOR_PERIOD": "এই সময়ের জন্য NASA তথ্য নেই: {detail}",
+          "INTERNAL": "সার্ভারে একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।"}
+
+    def __init__(self, code, en, detail=""):
+        super().__init__(en)
+        self.code, self.en = code, en
+        self.bn = self.BN[code].format(detail=detail or en)
+        self.status = self.STATUS[code]
+
+
+# ---------------- provenance ----------------
+
+def _period(path, col="date"):
+    dates = pd.read_csv(path, usecols=[col])[col]
+    return f"{dates.min()}/{dates.max()}"
+
+
+@functools.lru_cache(maxsize=1)
+def fixed_provenance():
+    smap = sorted(glob.glob(os.path.join(PROCESSED, "smap_*_2015_2026.csv")))
+    dswx = sorted(glob.glob(os.path.join(PROCESSED, "dswx_area_*.csv")))
+    return {
+        "imerg": {"dataset": RAIN_CITATIONS["imerg"]["dataset"], "url": RAIN_CITATIONS["imerg"]["url"],
+                  "agency": "NASA", "period": _period(os.path.join(PROCESSED, "imerg_cumilla_daily.csv")),
+                  "resolution": "0.1° grid", "note": "Rain. Area around the field, not the exact plot."},
+        "power": {"dataset": "NASA POWER Daily Point API (AG community): temperature, humidity, "
+                             "wind, solar radiation", "url": "https://power.larc.nasa.gov/",
+                  "agency": "NASA", "period": _period(os.path.join(PROCESSED, "power_cumilla_daily.csv")),
+                  "resolution": "~0.5° grid",
+                  "note": "Not used for rain. Feni and Noakhali share one cell."},
+        "smap": {"dataset": "NASA SMAP L4 root-zone soil moisture (SPL4SMGP), via AppEEARS",
+                 "url": "https://appeears.earthdatacloud.nasa.gov/", "agency": "NASA",
+                 "period": _period(smap[0]) if smap else "", "resolution": "~9 km",
+                 "note": "Its rain forcing is corrected to IMERG, so it is not independent of IMERG."},
+        "opera": {"dataset": "NASA OPERA DSWx-S1 surface water (from Sentinel-1 radar)",
+                  "url": "https://podaac.jpl.nasa.gov/dataset/OPERA_L3_DSWX-S1_V1",
+                  "agency": "NASA JPL (Sentinel-1: ESA)",
+                  "period": _period(dswx[0]) if dswx else "", "resolution": "30 m",
+                  "note": "20 km x 20 km area around the district point; no scenes before 2024-08-21."},
+        "fao56": {"dataset": "FAO-56 Crop evapotranspiration (Allen et al., 1998): Penman-Monteith "
+                             "ET0, crop coefficients, root-zone water balance",
+                  "url": "https://www.fao.org/4/x0490e/x0490e00.htm", "agency": "FAO",
+                  "period": "", "resolution": "", "note": "Method reference; Kc in data/processed/kc_table.csv."},
+        "calendar": {"dataset": "CropShift sowing-date risk calendar (data/processed/risk_calendar.csv)",
+                     "url": f"{REPO_URL}/blob/main/docs/results/risk_calendar.md",
+                     "agency": "Team Regolith analysis of NASA IMERG + POWER",
+                     "period": f"seasons {rc.SEASONS[0]}-{rc.SEASONS[-1]}", "resolution": "",
+                     "note": "Built by scripts/build_risk_calendar.py from the cited rows listed here."},
+        "post_flood": {"dataset": "CropShift post-flood recovery method (docs/results/post_flood.md)",
+                       "url": f"{REPO_URL}/blob/main/docs/results/post_flood.md",
+                       "agency": "Team Regolith analysis of NASA SMAP + OPERA DSWx-S1",
+                       "period": "", "resolution": "", "note": ""},
+        "assumptions": {"dataset": "CropShift modelling assumptions (not from a source; listed so "
+                                   "they can be checked)",
+                        "url": f"{REPO_URL}/blob/main/src/compute/risk_calendar.py",
+                        "agency": "Team Regolith", "period": "", "resolution": "",
+                        "note": "ASSUMPTIONS in risk_calendar.py and API_ASSUMPTIONS in app.py."},
+    }
+
+
+@functools.lru_cache(maxsize=1)
+def reference_rows():
+    """Every row of data/reference/*.csv with a stable 'ref_NN' id per
+    (source_title, source_url)."""
+    frames = []
+    for path in sorted(glob.glob(os.path.join(REFERENCE, "*.csv"))):
+        name = os.path.basename(path)
+        if name.startswith("_"):
+            continue
+        df = pd.read_csv(path, dtype=str)
+        if not {"item", "source_title", "source_url"} <= set(df.columns):
+            continue
+        frames.append(df.assign(file=name))
+    rows = pd.concat(frames, ignore_index=True).dropna(subset=["source_title", "source_url"])
+    keys = sorted(set(zip(rows["source_title"], rows["source_url"])))
+    ids = {key: f"ref_{i + 1:02d}" for i, key in enumerate(keys)}
+    rows["ref_id"] = [ids[k] for k in zip(rows["source_title"], rows["source_url"])]
+    return rows
+
+
+def ref_provenance(ref_id):
+    rows = reference_rows()
+    rows = rows[rows["ref_id"] == ref_id]
+    if rows.empty:
+        raise KeyError(ref_id)
+    first = rows.iloc[0]
+    files = ", ".join(sorted(set(rows["file"])))
+    return {"dataset": first["source_title"], "url": first["source_url"],
+            "agency": "", "period": "" if pd.isna(first.get("year")) else str(first["year"]),
+            "resolution": "", "note": f"Cited in data/reference/{files}"}
+
+
+def ref_ids_for(citations):
+    """ref ids for a list of citation dicts ({source_title, source_url, ...})."""
+    rows = reference_rows()
+    lookup = dict(zip(zip(rows["source_title"], rows["source_url"]), rows["ref_id"]))
+    return [lookup[(c["source_title"], c["source_url"])] for c in citations
+            if (c["source_title"], c["source_url"]) in lookup]
+
+
+def ref_ids_for_items(items):
+    rows = reference_rows()
+    return list(dict.fromkeys(rows[rows["item"].isin(items)]["ref_id"]))
+
+
+def build_provenance(data):
+    fixed = fixed_provenance()
+    out = []
+    for pid in dict.fromkeys(_src_ids(data, [])):
+        entry = fixed[pid] if pid in fixed else ref_provenance(pid)
+        out.append({"id": pid, **entry})
+    return out
+
+
+# ---------------- cached inputs (loaded once) ----------------
+
+@functools.lru_cache(maxsize=1)
+def calendar_table():
+    return pd.read_csv(rc.RISK_CALENDAR_PATH)
+
+
+@functools.lru_cache(maxsize=1)
+def crop_specs():
+    return rc.build_crop_specs(rc.load_reference_for_calendar())
+
+
+@functools.lru_cache(maxsize=1)
+def district_metadata():
+    return pd.read_csv(rc.DISTRICT_METADATA_PATH).set_index("district")
+
+
+@functools.lru_cache(maxsize=None)
+def weather(district):
+    """IMERG rain + POWER temperature etc. + FAO-56 ET0 (~2 s per district)."""
+    return rc.prepare_weather(district, district_metadata())
+
+
+@functools.lru_cache(maxsize=None)
+def smap(district):
+    return pd.read_csv(os.path.join(PROCESSED, f"smap_{district}_2015_2026.csv"),
+                       index_col="date", parse_dates=True)
+
+
+@functools.lru_cache(maxsize=None)
+def dswx_area(district):
+    path = os.path.join(PROCESSED, f"dswx_area_{district}.csv")
+    return pd.read_csv(path, parse_dates=["date"]) if os.path.exists(path) else None
+
+
+@functools.lru_cache(maxsize=None)
+def kc_table():
+    return pd.read_csv(rc.KC_TABLE_PATH)
+
+
+@functools.lru_cache(maxsize=256)
+def smap_recovery(district, flood_date):
+    return pf.smap_days_to_normal(smap(district), flood_date)
+
+
+def crop_src(crop):
+    """Provenance for a crop's calendar numbers: weather, the calendar method
+    and every cited row (window, stage timing, thresholds)."""
+    spec = crop_specs()[crop]
+    cites = list((spec["window"] or {}).get("citations", []))
+    for stage in spec["stage_days"].values():
+        cites += stage["citations"]
+    if spec["base_temp"] is not None:
+        cites += spec["base_temp"]["citations"]
+    for hazard in spec["hazards"]:
+        cites += hazard["threshold"]["citations"]
+    return list(dict.fromkeys(["imerg", "power", "calendar"] + ref_ids_for(cites)))
+
+
+def water_src(crop, district):
+    """Provenance for irrigation / stress numbers: weather, FAO-56 and the
+    cited crop, soil (and paddy) rows."""
+    param_crop = WATER_PARAM_CROP.get(crop, crop)
+    items = [f"{param_crop}.{k}" for k in ("zr_min_m", "zr_max_m", "p")]
+    items += [f"{district}.{k}" for k in ("theta_fc_m3m3", "theta_wp_m3m3", "clay_pct")]
+    ids = ref_ids_for_items(items)
+    if rc.WATER_MODEL[crop] == "paddy":
+        rows = reference_rows()
+        ids += list(dict.fromkeys(rows[rows["file"] == "paddy_params.csv"]["ref_id"]))
+    return list(dict.fromkeys(["imerg", "power", "fao56"] + ids))
+
+
+def window_src(crop):
+    spec = crop_specs()[crop]
+    return list(dict.fromkeys(ref_ids_for((spec["window"] or {}).get("citations", []))))
+
+
+# ---------------- envelope ----------------
+
+def envelope(endpoint, request, data, narration=None, notices=(), errors=(),
+             provenance=None, is_mock=False, source_mode=SOURCE_MODE):
+    data = _clean(data)
+    return {
+        "api_version": API_VERSION,
+        "endpoint": endpoint,
+        "request": {k: v for k, v in request.items() if v is not None},
+        "generated_at": _dt.datetime.now(BD_TZ).isoformat(timespec="seconds"),
+        "source_mode": source_mode,
+        "is_mock": is_mock,
+        "data": data,
+        "narration": narration,
+        "provenance": provenance if provenance is not None else
+        (build_provenance(data) if data is not None else []),
+        "notices": list(notices),
+        "errors": list(errors),
+    }
+
+
+def error_response(endpoint, request, err):
+    body = envelope(endpoint, request, None,
+                    errors=[{"code": err.code, "en": err.en, "bn": err.bn}])
+    return JSONResponse(body, status_code=err.status)
+
+
+def narrate(texts, fallback, data):
+    """texts / fallback: {"en", "bn", "sms_en", "sms_bn"}. Every number in
+    texts must be found in the cited data (guard()); if one is not, the
+    number-free fallback is used instead."""
+    texts = {k: v[:160] if k.startswith("sms") else v for k, v in texts.items()}
+    tool_result = {"data": _clean(data), "sources": build_provenance(_clean(data))}
+    passed = all(guard(texts[k], [tool_result])["passed"] for k in texts)
+    chosen = texts if passed else fallback
+    return {**chosen,
+            "narrator": "template",
+            "provenance_check": "passed" if passed else "blocked_fallback_used"}
+
+
+def respond(endpoint, request, build):
+    """Runs build() -> (data, narration, notices); any failure becomes the
+    error envelope, never an empty body."""
+    try:
+        data, narration, notices = build()
+        return JSONResponse(envelope(endpoint, request, data, narration, notices))
+    except ApiError as err:
+        return error_response(endpoint, request, err)
+    except Exception as exc:  # noqa: BLE001 - the contract forbids an empty body
+        return error_response(endpoint, request, ApiError(
+            "INTERNAL", f"Internal error: {type(exc).__name__}"))
+
+
+# ---------------- parameter checks ----------------
+
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def check_district(district):
+    if not district:
+        raise ApiError("BAD_PARAMETER", "Missing parameter: district.", "district")
+    if district.lower() not in DISTRICTS:
+        raise ApiError("DISTRICT_NOT_COVERED",
+                       "CropShift covers Cumilla, Feni, Brahmanbaria, Noakhali and Sylhet for now.")
+    return district.lower()
+
+
+def check_date(name, value, required=True):
+    if value is None or value == "":
+        if required:
+            raise ApiError("BAD_PARAMETER", f"Missing parameter: {name} (YYYY-MM-DD).", name)
+        return None
+    try:
+        if not DATE_RE.match(value):
+            raise ValueError
+        return pd.Timestamp(value)
+    except ValueError:
+        raise ApiError("BAD_PARAMETER", f"{name} must be a date written YYYY-MM-DD, got {value!r}.",
+                       name) from None
+
+
+def check_crop(crop, allowed=rc.CROPS):
+    if not crop:
+        raise ApiError("BAD_PARAMETER", "Missing parameter: crop.", "crop")
+    if crop not in allowed:
+        raise ApiError("BAD_PARAMETER", f"Unknown crop {crop!r}; choose one of {', '.join(allowed)}.",
+                       "crop")
+    return crop
+
+
+def check_lang(lang):
+    if lang not in ("en", "bn"):
+        raise ApiError("BAD_PARAMETER", "lang must be 'en' or 'bn'.", "lang")
+    return lang
+
+
+def district_notices(district):
+    notices = [AREA_NOTICE]
+    if district in POWER_CELL_SHARED:
+        notices.append(SHARED_CELL_NOTICE)
+    return notices
+
+
+# ---------------- crop option (advisory, post-flood) ----------------
+
+def hazard_label(hazard):
+    return {"en": rc.hazard_label(hazard).capitalize(), "bn": HAZARD_BN.get(hazard, hazard)}
+
+
+def checked_text(hazards):
+    if not hazards:
+        return {"en": "No risk could be checked yet (no sourced threshold).",
+                "bn": "এখনও কোনো ঝুঁকি যাচাই করা যায়নি (উৎসসহ সীমা নেই)।"}
+    return {"en": "Checked: " + ", ".join(rc.hazard_label(h) for h in hazards) + ".",
+            "bn": "যাচাই করা হয়েছে: " + ", ".join(HAZARD_BN.get(h, h) for h in hazards) + "।"}
+
+
+def threshold_measure(hazard_spec, src):
+    value = rc.threshold_value(hazard_spec, "onset")
+    if hazard_spec["kind"] == "waterlog":
+        unit = "saturated days in a row (first 30 days after sowing)"
+    elif hazard_spec["variable"] == "temp_max_c":
+        unit = "°C daily maximum, problem above"
+    elif hazard_spec["op"] == ">":
+        unit = "°C daily minimum (night), problem above"
+    else:
+        unit = "°C daily minimum, problem below"
+    return measure(value, unit, src, decimals=1)
+
+
+def window_status(option):
+    if option["sowing_date"] is None:
+        return {"code": "closed",
+                "en": "More than 4 weeks past the recommended sowing window.",
+                "bn": "সুপারিশকৃত বপনের সময় পেরিয়ে ৪ সপ্তাহের বেশি হয়ে গেছে।"}
+    if option["outside_recommended_window"]:
+        return {"code": "late", "en": "After the recommended sowing window (late sowing).",
+                "bn": "সুপারিশকৃত বপনের সময়ের পরে (দেরিতে বপন)।"}
+    return {"code": "open", "en": "Inside the recommended sowing window.",
+            "bn": "সুপারিশকৃত বপনের সময়ের মধ্যে।"}
+
+
+def calendar_row(district, crop, sowing_date):
+    if sowing_date is None:
+        return None
+    cal = calendar_table()
+    mmdd = sowing_date[5:]
+    rows = cal[(cal["district"] == district) & (cal["crop"] == crop) & (cal["sowing_mmdd"] == mmdd)]
+    return None if rows.empty else rows.iloc[0]
+
+
+def crop_option(district, option, season):
+    """One rotation_options() option in the contract's shape."""
+    crop = option["crop"]
+    spec = crop_specs()[crop]
+    csrc, wsrc = crop_src(crop), water_src(crop, district)
+    row = calendar_row(district, crop, option["sowing_date"])
+    n = option["n_years"]
+    years_unit = f"of {n} years" if n else "years"
+    start, end = (tuple(int(x) for x in s.split("-")) for s in option["window"].split(" to "))
+    hazards = []
+    for h in spec["hazards"]:
+        hit = None if row is None else row.get(f"problem_years_{h['hazard']}")
+        hazards.append({"hazard": h["hazard"], "label": hazard_label(h["hazard"]),
+                        "years_hit": measure(hit, years_unit, csrc),
+                        "threshold": threshold_measure(h, csrc)})
+    stress_w20 = None if row is None else row.get("stress_days_worst20")
+    maturity = option["maturity_date"]
+    return {
+        "rank": option["rank"],
+        "crop": crop,
+        "crop_name": CROP_NAMES[crop],
+        "feasible": option["rank"] is not None,
+        "sowing_date": ({"date": option["sowing_date"], "src": csrc}
+                        if option["sowing_date"] else None),
+        "sowing_window": {"start": str(rc.season_date(season, *start).date()),
+                          "end": str(rc.season_date(season, *end).date()),
+                          "src": window_src(crop) or csrc},
+        "window_status": window_status(option),
+        "problem_years": measure(option["problem_years"], years_unit, csrc),
+        "hazards_checked": hazards,
+        "hazards_checked_text": checked_text(option["hazards_checked"]),
+        "hazards_missing": [{"hazard": h, "label": hazard_label(h)} for h in option["hazards_missing"]],
+        "coverage_notice": NOT_ALL_CHECKED if option["hazards_missing"] else None,
+        "main_risks": [{"hazard": h["hazard"], "label": h["label"], "years_hit": h["years_hit"]}
+                       for h in hazards if (h["years_hit"]["value"] or 0) > 0],
+        "irrigation_need_avg": measure(option["irrigation_mm_mean"], "mm", wsrc),
+        "irrigation_need_worst20": measure(option["irrigation_mm_worst20"], "mm", wsrc),
+        "water_stress_days_avg": measure(option["stress_days_mean"], "days", wsrc),
+        "water_stress_days_worst20": measure(stress_w20, "days", wsrc),
+        "maturity_date": {"date": maturity, "src": csrc} if maturity else None,
+        "why": ({"en": "Ranked by problem years first, then by irrigation need in the worst "
+                       "20% of years.",
+                 "bn": "প্রথমে সমস্যার বছরের সংখ্যা, তারপর সবচেয়ে খারাপ ২০% বছরের সেচের "
+                       "প্রয়োজন দিয়ে সাজানো।"} if option["rank"] else None),
+    }
+
+
+def split_options(district, result):
+    """rotation_options() result -> (ranked options, filtered_out)."""
+    season = rc.season_of(pd.Timestamp(result["earliest_sowing_date"]))
+    ranked, filtered = [], []
+    for option in result["options"]:
+        item = crop_option(district, option, season)
+        if option["rank"] is not None:
+            ranked.append(item)
+        elif option["sowing_date"] is None:
+            filtered.append({**item, "reason_code": "TOO_LATE",
+                             "reason": {"en": "Too late: more than 4 weeks past the recommended "
+                                              "sowing window.",
+                                        "bn": "অনেক দেরি: সুপারিশকৃত বপনের সময় পেরিয়ে ৪ সপ্তাহের "
+                                              "বেশি।"}})
+        else:
+            filtered.append({**item, "reason_code": "NO_RISK_CHECKED",
+                             "reason": {"en": "Not ranked: none of its risks can be checked yet "
+                                              "(no sourced threshold and stage timing).",
+                                        "bn": "র‍্যাঙ্ক করা হয়নি: এর কোনো ঝুঁকি এখনও যাচাই করা "
+                                              "যায় না (উৎসসহ সীমা নেই)।"}})
+    return ranked, filtered
+
+
+def coverage_notices(options):
+    partial = [o["crop_name"] for o in options if o["coverage_notice"]]
+    if not partial:
+        return []
+    return [{"level": "caution",
+             "en": "Not all risks are checked yet for: " + ", ".join(p["en"] for p in partial) + ".",
+             "bn": "এই ফসলগুলোর সব ঝুঁকি এখনও যাচাই করা হয়নি: "
+                   + ", ".join(p["bn"] for p in partial) + "।"}]
+
+
+def earliest_block(result, flood_ready_used):
+    if flood_ready_used:
+        basis = {"en": "The post-flood ready date (soil back to normal and flood water gone).",
+                 "bn": "বন্যার পর জমি প্রস্তুতের তারিখ (মাটি স্বাভাবিক ও পানি নেমে গেছে)।"}
+        src = ["smap", "opera", "post_flood"]
+    else:
+        days = rc.TURNAROUND_DAYS
+        basis = {"en": f"Harvest date + {days} days to prepare the field (CropShift assumption).",
+                 "bn": f"ফসল কাটার তারিখ + জমি তৈরির {bn_digits(days)} দিন (CropShift অনুমান)।"}
+        src = ["assumptions"]
+    return {"date": result["earliest_sowing_date"], "basis": basis, "src": src}
+
+
+# ---------------- the app ----------------
+
+def warm_caches():
+    """Loads everything slow once, so requests stay under ~3 s."""
+    calendar_table()
+    crop_specs()
+    reference_rows()
+    fixed_provenance()
+    for district in DISTRICTS:
+        weather(district)
+        smap(district)
+    for district in ("feni", "cumilla", "noakhali", "brahmanbaria"):
+        smap_recovery(district, "2024-08-21")   # the Aug-2024 demo flood
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    warm_caches()
+    yield
+
+
+app = FastAPI(title="CropShift API", version=API_VERSION, lifespan=lifespan,
+              description="Which crop to plant and when, with NASA data as the evidence. "
+                          "Every number carries its source. Records of past seasons, not forecasts.")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"],
+                   allow_headers=["*"])
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error(request: Request, exc: StarletteHTTPException):
+    err = ApiError("BAD_PARAMETER", f"Unknown endpoint or method: {request.method} {request.url.path}.",
+                   request.url.path)
+    body = envelope(request.url.path, dict(request.query_params), None,
+                    errors=[{"code": err.code, "en": err.en, "bn": err.bn}])
+    return JSONResponse(body, status_code=exc.status_code)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, exc: RequestValidationError):
+    return error_response(request.url.path, dict(request.query_params),
+                          ApiError("BAD_PARAMETER", f"Bad parameter: {exc.errors()[0].get('msg', '')}"))
+
+
+@app.exception_handler(Exception)
+async def internal_error(request: Request, exc: Exception):
+    return error_response(request.url.path, dict(request.query_params),
+                          ApiError("INTERNAL", f"Internal error: {type(exc).__name__}"))
+
+
+# ---------------- /districts ----------------
+
+@app.get("/api/v1/districts")
+def districts():
+    endpoint = "/api/v1/districts"
+
+    def build():
+        meta = district_metadata()
+        crops = sorted(calendar_table()["crop"].unique())
+        out = []
+        for did, name in DISTRICTS.items():
+            has_dswx = dswx_area(did) is not None
+            out.append({
+                "id": did, "name": name,
+                "lat": float(meta.loc[did, "latitude"]), "lon": float(meta.loc[did, "longitude"]),
+                "power_cell_shared_with": POWER_CELL_SHARED.get(did, []),
+                "covered": True,
+                "coverage": {
+                    "rain": {"period": fixed_provenance()["imerg"]["period"], "src": ["imerg"]},
+                    "temperature": {"period": fixed_provenance()["power"]["period"], "src": ["power"]},
+                    "soil_moisture": {"period": fixed_provenance()["smap"]["period"], "src": ["smap"]},
+                    "flood_maps": ({"period": fixed_provenance()["opera"]["period"], "src": ["opera"]}
+                                   if has_dswx else None),
+                    "risk_calendar_crops": crops,
+                },
+            })
+        notices = [AREA_NOTICE, SHARED_CELL_NOTICE,
+                   {"level": "info",
+                    "en": "Radar flood maps (OPERA DSWx-S1) exist from 2024-08-21 and not for Sylhet.",
+                    "bn": "রাডার বন্যা-মানচিত্র (OPERA DSWx-S1) ২০২৪-০৮-২১ থেকে আছে, সিলেটের জন্য নেই।"}]
+        return {"districts": out}, None, notices
+
+    return respond(endpoint, {}, build)
+
+
+# ---------------- /advisory ----------------
+
+@app.get("/api/v1/advisory")
+def advisory(district: str = None, prev_harvest: str = None, flood_ready: str = None,
+             lang: str = "en"):
+    endpoint = "/api/v1/advisory"
+    request = {"district": district, "prev_harvest": prev_harvest, "flood_ready": flood_ready,
+               "lang": lang}
+
+    def build():
+        did = check_district(district)
+        harvest = check_date("prev_harvest", prev_harvest)
+        ready = check_date("flood_ready", flood_ready, required=False)
+        check_lang(lang)
+        result = rc.rotation_options(did, harvest, ready, calendar=calendar_table())
+        ranked, filtered = split_options(did, result)
+        n = next((o["n_years"] for o in result["options"] if o["n_years"]), len(rc.SEASONS))
+        data = {
+            "district": did,
+            "prev_harvest": str(harvest.date()),
+            "flood_ready": str(ready.date()) if ready is not None else None,
+            "earliest_sowing_date": earliest_block(result, result["basis"].startswith("post-flood")),
+            "years_used": measure(n, "years", ["imerg", "power", "calendar"]),
+            "method": {"en": f"Each crop was checked at its sowing date against every season "
+                             f"{rc.SEASONS[0]}-{rc.SEASONS[-1]} of NASA data for the area around "
+                             f"your field (IMERG rain, POWER temperature). Ranked by problem years, "
+                             f"then by irrigation need in the worst 20% of years.",
+                       "bn": f"{bn_digits(rc.SEASONS[0])}-{bn_digits(rc.SEASONS[-1])} সালের প্রতিটি "
+                             f"মৌসুমের NASA তথ্যে (IMERG বৃষ্টি, POWER তাপমাত্রা) প্রতিটি ফসল তার "
+                             f"বপনের তারিখে যাচাই করা হয়েছে। সমস্যার বছর, তারপর সবচেয়ে খারাপ ২০% "
+                             f"বছরের সেচ দিয়ে সাজানো।"},
+            "options": ranked,
+            "filtered_out": filtered,
+        }
+        name = DISTRICTS[did]
+        earliest = result["earliest_sowing_date"]
+        if ranked:
+            top = ranked[0]
+            py, irr, irr_w = (top["problem_years"]["value"], top["irrigation_need_avg"]["value"],
+                              top["irrigation_need_worst20"]["value"])
+            crop_en, crop_bn = top["crop_name"]["en"], top["crop_name"]["bn"]
+            sow = top["sowing_date"]["date"]
+            chk = top["hazards_checked_text"]
+            extra_en = f" {NOT_ALL_CHECKED['en']}" if top["coverage_notice"] else ""
+            extra_bn = f" {NOT_ALL_CHECKED['bn']}" if top["coverage_notice"] else ""
+            texts = {
+                "en": f"{name['en']}: earliest sowing {earliest}. Top-ranked: {crop_en} sown {sow} "
+                      f"had problems in {_fmt(py)} of {n} years here. {chk['en']}{extra_en} "
+                      f"Irrigation need about {_fmt(irr)} mm on average, {_fmt(irr_w)} mm in the "
+                      f"worst 20% of years.",
+                "bn": f"{name['bn']}: সবচেয়ে আগে বপন {bn_digits(earliest)}। প্রথম পছন্দ: {crop_bn}, "
+                      f"{bn_digits(sow)} তারিখে বুনলে এখানে {bn_digits(n)} বছরের মধ্যে "
+                      f"{bn_digits(_fmt(py))} বছরে সমস্যা হয়েছে। {chk['bn']}{extra_bn} সেচ: গড়ে প্রায় "
+                      f"{bn_digits(_fmt(irr))} মিমি, সবচেয়ে খারাপ ২০% বছরে {bn_digits(_fmt(irr_w))} মিমি।",
+                "sms_en": f"{crop_en} sow {sow}: problems {_fmt(py)}/{n} yrs, irrigation "
+                          f"~{_fmt(irr)} mm (NASA data, past years).",
+                "sms_bn": f"{crop_bn} বপন {bn_digits(sow)}: {bn_digits(n)} বছরে {bn_digits(_fmt(py))} "
+                          f"বছর সমস্যা, সেচ ~{bn_digits(_fmt(irr))} মিমি (NASA)।",
+            }
+        else:
+            texts = {"en": f"{name['en']}: earliest sowing {earliest}. No crop can be ranked for "
+                           f"this date.",
+                     "bn": f"{name['bn']}: সবচেয়ে আগে বপন {bn_digits(earliest)}। এই তারিখে কোনো "
+                           f"ফসল র‍্যাঙ্ক করা যায়নি।",
+                     "sms_en": f"{name['en']}: no crop can be ranked for {earliest}.",
+                     "sms_bn": f"{name['bn']}: {bn_digits(earliest)} তারিখে কোনো ফসল র‍্যাঙ্ক করা যায়নি।"}
+        fallback = {"en": "See the ranked crop options below; each number shows its NASA source.",
+                    "bn": "নিচে র‍্যাঙ্ক করা ফসলগুলো দেখুন; প্রতিটি সংখ্যার NASA উৎস দেওয়া আছে।",
+                    "sms_en": "CropShift: see crop options (NASA data).",
+                    "sms_bn": "CropShift: ফসলের তালিকা দেখুন (NASA তথ্য)।"}
+        notices = (district_notices(did) + [PAST_NOT_FORECAST, WEATHER_RISKS_ONLY]
+                   + coverage_notices(ranked + filtered))
+        if not ranked and all(o["reason_code"] == "TOO_LATE" for o in filtered):
+            notices.append(ALL_WINDOWS_PASSED)
+        return data, narrate(texts, fallback, data), notices
+
+    return respond(endpoint, request, build)
+
+
+# ---------------- /risk-calendar ----------------
+
+@app.get("/api/v1/risk-calendar")
+def risk_calendar(district: str = None, crop: str = None):
+    endpoint = "/api/v1/risk-calendar"
+    request = {"district": district, "crop": crop}
+
+    def build():
+        did = check_district(district)
+        c = check_crop(crop)
+        cal = calendar_table()
+        rows = cal[(cal["district"] == did) & (cal["crop"] == c)].sort_values("sow_offset")
+        if rows.empty:
+            raise ApiError("NO_DATA_FOR_PERIOD", f"No risk calendar rows for {c} in {did}.")
+        spec = crop_specs()[c]
+        csrc, wsrc = crop_src(c), water_src(c, did)
+        n = int(rows["n_years"].max())
+        years_unit = f"years with the problem (of {n})"
+        checked = [h["hazard"] for h in spec["hazards"]]
+        missing = [m["hazard"] for m in spec["missing"] if m["hazard"] != "(all)"]
+
+        def col(name, decimals=0):
+            if name not in rows:
+                return [None] * len(rows)
+            return [_num(v, decimals) for v in rows[name]]
+
+        first = rows.iloc[0]
+        data = {
+            "district": did, "crop": c, "crop_name": CROP_NAMES[c],
+            "years_used": measure(n, "years", ["imerg", "power", "calendar"]),
+            "recommended_window": {"start": first["window_start"], "end": first["window_end"],
+                                   "format": "MM-DD", "method": first["window_method"],
+                                   "src": window_src(c) or csrc},
+            "hazards": [{"id": h["hazard"], "label": hazard_label(h["hazard"]),
+                         "threshold": threshold_measure(h, csrc)} for h in spec["hazards"]],
+            "hazards_checked_text": checked_text(checked),
+            "hazards_missing": [{"hazard": h, "label": hazard_label(h)} for h in missing],
+            "coverage_notice": NOT_ALL_CHECKED if missing else None,
+            "sowing_dates": list(rows["sowing_mmdd"]),
+            "sowing_dates_format": "MM-DD, the same day in every season",
+            "grid": {
+                "src": csrc, "unit": years_unit,
+                "rows": [{"hazard": h, "years_hit": col(f"problem_years_{h}")} for h in checked],
+                "any_problem_years": col("problem_years"),
+                "n_years": col("n_years"),
+                "outside_window": [bool(v) for v in rows["outside_window"]],
+            },
+            "water": {
+                "src": wsrc,
+                "units": {"irrigation_mm_mean": "mm", "irrigation_mm_worst20": "mm",
+                          "stress_days_mean": "days", "stress_days_worst20": "days"},
+                "irrigation_mm_mean": col("irrigation_mm_mean"),
+                "irrigation_mm_worst20": col("irrigation_mm_worst20"),
+                "stress_days_mean": col("stress_days_mean"),
+                "stress_days_worst20": col("stress_days_worst20"),
+            },
+            "sensitivity": {
+                "src": csrc + ["assumptions"], "unit": years_unit,
+                "rows": [
+                    {"id": "hot1", "label": {"en": "Problem year if 1 day crosses the threshold (main: 3)",
+                                             "bn": "১ দিন সীমা পার হলেই সমস্যার বছর (মূল: ৩)"},
+                     "any_problem_years": col("problem_years_hot1")},
+                    {"id": "hot5", "label": {"en": "Problem year only if 5 days cross it (main: 3)",
+                                             "bn": "৫ দিন সীমা পার হলে সমস্যার বছর (মূল: ৩)"},
+                     "any_problem_years": col("problem_years_hot5")},
+                    {"id": "severe", "label": {"en": "Severe end of the cited threshold range",
+                                               "bn": "উৎসের সীমার তীব্র প্রান্ত"},
+                     "any_problem_years": col("problem_years_severe")},
+                    {"id": "window15", "label": {"en": "Flowering window 15 days wide (main: 7)",
+                                                 "bn": "ফুল ফোটার সময়কাল ১৫ দিন (মূল: ৭)"},
+                     "any_problem_years": col("problem_years_window15")},
+                ],
+            },
+        }
+        name, cname = DISTRICTS[did], CROP_NAMES[c]
+        values = [v for v in data["grid"]["any_problem_years"] if v is not None]
+        d0, d1 = data["sowing_dates"][0], data["sowing_dates"][-1]
+        if values and checked:
+            lo, hi = min(values), max(values)
+            extra_en = f" {NOT_ALL_CHECKED['en']}" if missing else ""
+            extra_bn = f" {NOT_ALL_CHECKED['bn']}" if missing else ""
+            chk = checked_text(checked)
+            texts = {
+                "en": f"{cname['en']} in {name['en']}, sown between {d0} and {d1} (month-day): "
+                      f"problems in {lo} to {hi} of {n} years. {chk['en']}{extra_en}",
+                "bn": f"{name['bn']}-এ {cname['bn']}, {bn_digits(d0)} থেকে {bn_digits(d1)} (মাস-দিন) "
+                      f"বুনলে {bn_digits(n)} বছরের মধ্যে {bn_digits(lo)} থেকে {bn_digits(hi)} বছরে "
+                      f"সমস্যা। {chk['bn']}{extra_bn}",
+                "sms_en": f"{cname['en']} {d0} to {d1}: problems in {lo}-{hi} of {n} yrs (NASA data).",
+                "sms_bn": f"{cname['bn']} {bn_digits(d0)} থেকে {bn_digits(d1)}: {bn_digits(n)} বছরে "
+                          f"{bn_digits(lo)}-{bn_digits(hi)} বছর সমস্যা (NASA)।",
+            }
+        else:
+            texts = {"en": f"{cname['en']} in {name['en']}: no risk can be checked yet (no sourced "
+                           f"threshold). {NOT_ALL_CHECKED['en']}",
+                     "bn": f"{name['bn']}-এ {cname['bn']}: এখনও কোনো ঝুঁকি যাচাই করা যায়নি। "
+                           f"{NOT_ALL_CHECKED['bn']}",
+                     "sms_en": f"{cname['en']}: risks not checked yet.",
+                     "sms_bn": f"{cname['bn']}: ঝুঁকি এখনও যাচাই হয়নি।"}
+        fallback = {"en": "See the calendar below; each number shows its NASA source.",
+                    "bn": "নিচের ক্যালেন্ডার দেখুন; প্রতিটি সংখ্যার NASA উৎস দেওয়া আছে।",
+                    "sms_en": "CropShift: see the sowing calendar (NASA data).",
+                    "sms_bn": "CropShift: বপন ক্যালেন্ডার দেখুন (NASA তথ্য)।"}
+        notices = district_notices(did) + [PAST_NOT_FORECAST, WEATHER_RISKS_ONLY]
+        if missing:
+            notices.append({"level": "caution", **NOT_ALL_CHECKED})
+        return data, narrate(texts, fallback, data), notices
+
+    return respond(endpoint, request, build)
+
+
+# ---------------- /post-flood ----------------
+
+def flood_water(district, flood):
+    """OPERA DSWx-S1 flood-area curve and recession, or None with a reason."""
+    area = dswx_area(district)
+    reason = None
+    if area is None:
+        reason = {"en": "No radar flood maps (OPERA DSWx-S1) were fetched for this district.",
+                  "bn": "এই জেলার জন্য রাডার বন্যা-মানচিত্র (OPERA DSWx-S1) নেই।"}
+    else:
+        lead = pd.Timedelta(days=API_ASSUMPTIONS["dswx_scene_lead_days"]["value"])
+        lag = pd.Timedelta(days=API_ASSUMPTIONS["dswx_peak_max_lag_days"]["value"])
+        if area["date"].min() > flood + lag or area["date"].max() < flood:
+            reason = {"en": f"Radar flood maps here cover {area['date'].min().date()} to "
+                            f"{area['date'].max().date()} only.",
+                      "bn": f"এখানে রাডার বন্যা-মানচিত্র শুধু {bn_digits(area['date'].min().date())} "
+                            f"থেকে {bn_digits(area['date'].max().date())} পর্যন্ত আছে।"}
+    if reason is not None:
+        return {"available": False, "reason": reason}, {}
+
+    floor_rows = area[(area["date"] >= "2025-01-01") & (area["date"] <= "2025-03-31")]
+    floor = float(floor_rows["flood_fraction"].median()) if len(floor_rows) else 0.0
+    used = area[area["date"] >= flood - lead]
+    try:
+        rec = pf.flood_recession(used, value_col="flood_fraction", baseline=floor)
+    except ValueError:   # no scene with enough of the area observed
+        return {"available": False,
+                "reason": {"en": "No radar pass saw enough of the area after this date.",
+                           "bn": "এই তারিখের পর কোনো রাডার পাসে এলাকার যথেষ্ট অংশ দেখা যায়নি।"}}, {}
+    peak_date = pd.Timestamp(rec["peak_date"])
+    conclusive = peak_date <= flood + lag
+    peak_km2 = float(used.loc[used["date"] == peak_date, "flood_km2"].iloc[0])
+    src = ["opera", "post_flood"]
+    block = {
+        "available": True,
+        "conclusive": bool(conclusive),
+        "peak_date": rec["peak_date"],
+        "peak_flood_share": measure(rec["peak_value"] * 100, "% of the observed area", src, 1),
+        "peak_flood_area": measure(peak_km2, "km²", src, 1),
+        "dry_season_floor": measure(floor * 100, "% of the observed area", src + ["assumptions"], 2),
+        "water_gone_date": rec["water_gone_date"] if conclusive else None,
+        "days_peak_to_gone": measure(rec["days_peak_to_gone"] if conclusive else None, "days", src),
+        "scenes_used": measure(rec["scenes_used"], "scenes", src),
+        "rule": {"en": "Flood water 'mostly gone' when 90% of the water above the dry-season floor "
+                       "has drained, for 2 radar passes in a row.",
+                 "bn": "শুকনো মৌসুমের স্তরের উপরের ৯০% পানি টানা ২টি রাডার পাসে নেমে গেলে "
+                       "'পানি প্রায় নেমে গেছে'।"},
+        "resolution_note": {"en": "30 m water maps from radar (sees through clouds).",
+                            "bn": "৩০ মিটার রাডার পানি-মানচিত্র (মেঘ ভেদ করে দেখে)।"},
+        "curve": {
+            "src": ["opera"],
+            "units": {"flood_km2": "km²", "flood_pct": "% of the observed area",
+                      "observed_pct": "% of the 20 km area seen that day"},
+            "rows": [{"date": str(r.date.date()), "flood_km2": _num(r.flood_km2, 1),
+                      "flood_pct": _num(r.flood_fraction * 100, 1),
+                      "observed_pct": _num(r.valid_fraction * 100, 0),
+                      "used": bool(r.valid_fraction >= 0.5)} for r in used.itertuples()],
+        },
+    }
+    if not conclusive:
+        block["reason"] = {"en": "The largest water reading comes long after this flood (seasonal "
+                                 "water, not this flood), so only soil moisture is used.",
+                           "bn": "সবচেয়ে বেশি পানি এই বন্যার অনেক পরে দেখা গেছে (মৌসুমি পানি), "
+                                 "তাই শুধু মাটির আর্দ্রতা ব্যবহার করা হয়েছে।"}
+        return block, {}
+    return block, rec
+
+
+@app.get("/api/v1/post-flood")
+def post_flood(district: str = None, flood_date: str = None, lang: str = "en"):
+    endpoint = "/api/v1/post-flood"
+    request = {"district": district, "flood_date": flood_date, "lang": lang}
+
+    def build():
+        did = check_district(district)
+        flood = check_date("flood_date", flood_date)
+        check_lang(lang)
+        series = smap(did)
+        hold = pd.Timedelta(days=7)
+        if flood < series.index.min() or flood > series.index.max() - hold:
+            raise ApiError("NO_DATA_FOR_PERIOD",
+                           f"SMAP soil moisture here covers {series.index.min().date()} to "
+                           f"{series.index.max().date()}; flood_date must fall inside it.",
+                           f"SMAP {series.index.min().date()} – {series.index.max().date()}")
+        soil = smap_recovery(did, str(flood.date()))
+        water, water_result = flood_water(did, flood)
+        earliest = pf.earliest_sowing_date(soil, water_result)
+        ssrc = ["smap", "post_flood"]
+        sensitivity = [{"pct": int(k.split("_")[1]), "date": v["date"],
+                        "days_after_flood": measure(v["days"], "days", ssrc)}
+                       for k, v in soil["sensitivity"].items()]
+        data = {
+            "district": did,
+            "flood_date": str(flood.date()),
+            "water_on_ground": water,
+            "soil_back_to_normal": {
+                "date": soil["normal_date"],
+                "days_after_flood": measure(soil["days_to_normal"], "days", ssrc),
+                "rule": {"en": "Root-zone moisture at or below the 80th percentile of other years "
+                               "(same dates ±15 days) for 7 days in a row.",
+                         "bn": "টানা ৭ দিন মাটির আর্দ্রতা অন্য বছরের একই সময়ের (±১৫ দিন) "
+                               "৮০তম শতাংশের সমান বা নিচে।"},
+                "sensitivity": sensitivity,
+            },
+            "earliest_sowing_date": ({"date": earliest,
+                                      "basis": {"en": "The later of: soil back to normal, flood "
+                                                      "water mostly gone.",
+                                                "bn": "মাটি স্বাভাবিক হওয়া ও পানি নেমে যাওয়া—এর "
+                                                      "মধ্যে যেটি পরে।"},
+                                      "src": ssrc + (["opera"] if water_result else [])}
+                                     if earliest else None),
+            "still_possible": [], "no_longer_possible": [], "cascade": None,
+            "soil_test_advice": {"en": "Satellites cannot measure soil pH or nutrients. Get a soil "
+                                       "test at SRDI or your Upazila Agriculture Office.",
+                                 "bn": "স্যাটেলাইট মাটির pH বা পুষ্টি মাপতে পারে না। SRDI বা "
+                                       "উপজেলা কৃষি অফিসে মাটি পরীক্ষা করান।"},
+        }
+        notices = district_notices(did) + [PAST_NOT_FORECAST]
+        if not water["available"] or not water.get("conclusive", True):
+            notices.append({"level": "caution", **water["reason"]})
+        if earliest:
+            # The flood -> planting chain: re-read the risk calendar at the ready date.
+            after = rc.rotation_options(did, flood, earliest, calendar=calendar_table())
+            at_once = rc.rotation_options(did, flood, calendar=calendar_table())
+            ranked, filtered = split_options(did, after)
+            data["still_possible"] = ranked + [o for o in filtered if o["reason_code"] != "TOO_LATE"]
+            data["no_longer_possible"] = [o for o in filtered if o["reason_code"] == "TOO_LATE"]
+            before = {o["crop"]: o for o in at_once["options"]}
+            rows = []
+            for o in after["options"]:
+                b = before[o["crop"]]
+                csrc = crop_src(o["crop"])
+                unit_a = f"of {o['n_years']} years" if o["n_years"] else "years"
+                unit_b = f"of {b['n_years']} years" if b["n_years"] else "years"
+                if o["sowing_date"] is None and b["sowing_date"] is not None:
+                    change = {"code": "lost", "en": "The flood delay closes this crop's window.",
+                              "bn": "বন্যার দেরিতে এই ফসলের সময় শেষ।"}
+                elif (o["problem_years"] or 0) > (b["problem_years"] or 0):
+                    change = {"code": "riskier", "en": "More problem years at the later date.",
+                              "bn": "দেরিতে বুনলে সমস্যার বছর বেশি।"}
+                elif o["sowing_date"] == b["sowing_date"] or o["problem_years"] == b["problem_years"]:
+                    change = {"code": "same", "en": "No change in problem years.",
+                              "bn": "সমস্যার বছরে পরিবর্তন নেই।"}
+                else:
+                    change = {"code": "fewer", "en": "Fewer problem years at the later date.",
+                              "bn": "দেরিতে বুনলে সমস্যার বছর কম।"}
+                rows.append({
+                    "crop": o["crop"], "crop_name": CROP_NAMES[o["crop"]],
+                    "if_ready_at_once": {"sowing_date": b["sowing_date"],
+                                         "problem_years": measure(b["problem_years"], unit_b, csrc)},
+                    "after_flood": {"sowing_date": o["sowing_date"],
+                                    "problem_years": measure(o["problem_years"], unit_a, csrc)},
+                    "change": change,
+                    "coverage_notice": NOT_ALL_CHECKED if o["hazards_missing"] else None,
+                })
+            if not data["still_possible"]:
+                notices.append(ALL_WINDOWS_PASSED)
+            data["cascade"] = {
+                "src": ["calendar", "smap", "post_flood"],
+                "compares": {"en": f"Sowing if the field were ready {rc.TURNAROUND_DAYS} days after "
+                                   f"the flood vs sowing at the post-flood ready date.",
+                             "bn": f"বন্যার {bn_digits(rc.TURNAROUND_DAYS)} দিন পরে জমি প্রস্তুত হলে "
+                                   f"বনাম বন্যার পর প্রকৃত প্রস্তুতের তারিখে বপন।"},
+                "rows": rows}
+            notices += [WEATHER_RISKS_ONLY] + coverage_notices(data["still_possible"])
+        else:
+            notices.append({"level": "caution",
+                            "en": "Soil moisture or flood water did not return to normal in the "
+                                  "data, so no sowing date can be given.",
+                            "bn": "তথ্যে মাটির আর্দ্রতা বা পানি স্বাভাবিক হয়নি, তাই বপনের তারিখ "
+                                  "দেওয়া যাচ্ছে না।"})
+
+        name = DISTRICTS[did]
+        days = data["soil_back_to_normal"]["days_after_flood"]["value"]
+        fd = data["flood_date"]
+        if earliest and days is not None:
+            gone = water.get("water_gone_date")
+            water_en = f" Flood water (radar) mostly gone by {gone}." if gone else ""
+            water_bn = f" বন্যার পানি (রাডার) {bn_digits(gone)} নাগাদ প্রায় নেমে গেছে।" if gone else ""
+            top = data["still_possible"][0] if data["still_possible"] else None
+            top_en = top_bn = ""
+            if top and top["rank"]:
+                top_en = (f" Top-ranked then: {top['crop_name']['en']}, problems in "
+                          f"{_fmt(top['problem_years']['value'])} {top['problem_years']['unit']}.")
+                top_bn = (f" তখন প্রথম পছন্দ: {top['crop_name']['bn']}, "
+                          f"{bn_digits(top['problem_years']['unit'].split()[1])} বছরের মধ্যে "
+                          f"{bn_digits(_fmt(top['problem_years']['value']))} বছরে সমস্যা।")
+            texts = {
+                "en": f"After the flood of {fd}, SMAP soil moisture near {name['en']} took {days} days "
+                      f"to return to normal.{water_en} Earliest sowing date: {earliest}.{top_en}",
+                "bn": f"{bn_digits(fd)} বন্যার পর {name['bn']} এলাকায় SMAP মাটির আর্দ্রতা স্বাভাবিক হতে "
+                      f"{bn_digits(days)} দিন লেগেছে।{water_bn} সবচেয়ে আগে বপন: {bn_digits(earliest)}।{top_bn}",
+                "sms_en": f"Flood {fd}: soil normal after {days} days; sow from {earliest} (NASA data).",
+                "sms_bn": f"বন্যা {bn_digits(fd)}: মাটি {bn_digits(days)} দিনে স্বাভাবিক; বপন "
+                          f"{bn_digits(earliest)} থেকে (NASA)।",
+            }
+        else:
+            texts = {"en": f"After the flood of {fd}, soil moisture near {name['en']} did not return "
+                           f"to normal in the data.",
+                     "bn": f"{bn_digits(fd)} বন্যার পর {name['bn']} এলাকায় মাটির আর্দ্রতা তথ্যে "
+                           f"স্বাভাবিক হয়নি।",
+                     "sms_en": f"Flood {fd}: soil not back to normal in the data.",
+                     "sms_bn": f"বন্যা {bn_digits(fd)}: তথ্যে মাটি স্বাভাবিক হয়নি।"}
+        fallback = {"en": "See the recovery clock below; each number shows its NASA source.",
+                    "bn": "নিচে পুনরুদ্ধারের হিসাব দেখুন; প্রতিটি সংখ্যার NASA উৎস দেওয়া আছে।",
+                    "sms_en": "CropShift: see flood recovery (NASA data).",
+                    "sms_bn": "CropShift: বন্যার পর জমির অবস্থা দেখুন (NASA)।"}
+        return data, narrate(texts, fallback, data), notices
+
+    return respond(endpoint, request, build)
+
+
+# ---------------- /field-twin ----------------
+
+def stage_names(crop, days):
+    kc = kc_table()
+    rows = kc[kc["crop"] == crop]
+    names = []
+    for stage, length in zip(rows["stage"], rows["length_days"]):
+        names += [stage] * int(length)
+    return (names + [names[-1]] * days)[:days]
+
+
+@app.get("/api/v1/field-twin")
+def field_twin(district: str = None, year: str = None, crop: str = None, sow_date: str = None,
+               lang: str = "en"):
+    endpoint = "/api/v1/field-twin"
+    request = {"district": district, "year": year, "crop": crop, "sow_date": sow_date, "lang": lang}
+
+    def build():
+        did = check_district(district)
+        if crop == "boro_rice":
+            raise ApiError("BAD_PARAMETER", "The week-by-week replay for boro rice (ponded paddy) is "
+                                            "not built yet.", "crop")
+        c = check_crop(crop, FIELD_TWIN_CROPS)
+        sow = check_date("sow_date", sow_date)
+        check_lang(lang)
+        yr = sow.year
+        if year not in (None, ""):
+            if not re.fullmatch(r"\d{4}", year):
+                raise ApiError("BAD_PARAMETER", "year must be a 4-digit year.", "year")
+            if int(year) not in (sow.year, rc.season_of(sow)):
+                raise ApiError("BAD_PARAMETER", f"year {year} does not match sow_date {sow_date}.",
+                               "year")
+            yr = int(year)
+        w = weather(did)
+        try:
+            result = crop_season(c, sow, w, kc_table(), load_crop_params(), load_soil_params()[did])
+        except ValueError as err:
+            if "does not cover" not in str(err):
+                raise
+            raise ApiError("NO_DATA_FOR_PERIOD",
+                           f"IMERG rain covers {w.index.min().date()} to {w.index.max().date()}; "
+                           f"a {c} season sown {sow.date()} (with the soil spin-up from 1 August) "
+                           f"does not fit inside it.",
+                           f"IMERG {w.index.min().date()} – {w.index.max().date()}") from None
+        daily, irrigated = result["daily"], result["daily_irrigated"]
+        season_w = w.loc[daily.index]
+        stages = stage_names(c, len(daily))
+        sm = smap(did)["sm_rootzone"]
+        sm_season = sm.reindex(daily.index)
+        smap_ok = bool(sm_season.notna().any())
+        weeks = []
+        for start in range(0, len(daily), 7):
+            sl = slice(start, start + 7)
+            d, irr, ww = daily.iloc[sl], irrigated.iloc[sl], season_w.iloc[sl]
+            weeks.append({
+                "week_start": str(d.index[0].date()), "days": len(d),
+                "stage": stages[start],
+                "rain_mm": _num(d["rain_mm"].sum(), 1),
+                "et0_mm": _num(d["et0_mm"].sum(), 1),
+                "crop_demand_mm": _num(d["etc_mm"].sum(), 1),
+                "tmax_mean_c": _num(ww["temp_max_c"].mean(), 1),
+                "tmax_highest_c": _num(ww["temp_max_c"].max(), 1),
+                "tmin_mean_c": _num(ww["temp_min_c"].mean(), 1),
+                "soil_water_pct": _num(d["relative_soil_water"].iloc[-1] * 100),
+                "stress_days": int(d["water_stress"].sum()),
+                "irrigation_mm": _num(irr["irrigation_mm"].sum(), 1),
+                "irrigation_events": int((irr["irrigation_mm"] > 0).sum()),
+                "smap_rootzone_m3m3": (_num(sm_season.iloc[sl].mean(), 3)
+                                       if sm_season.iloc[sl].notna().any() else None),
+            })
+        wsrc = water_src(c, did)
+        data = {
+            "district": did, "year": yr, "crop": c, "crop_name": CROP_NAMES[c],
+            "sow_date": str(sow.date()), "season_end": result["harvest_date"],
+            "is_forecast": False,
+            "label": {"en": f"What happened in {yr} with NASA data for the area around your field. "
+                            f"An example, not a forecast.",
+                      "bn": f"{bn_digits(yr)} সালে আপনার জমির আশেপাশের এলাকার NASA তথ্যে যা ঘটেছিল। "
+                            f"উদাহরণ, পূর্বাভাস নয়।"},
+            "weekly": {
+                "src": wsrc + (["smap"] if smap_ok else []),
+                "units": {"rain_mm": "mm/week", "et0_mm": "mm/week", "crop_demand_mm": "mm/week",
+                          "tmax_mean_c": "°C", "tmax_highest_c": "°C", "tmin_mean_c": "°C",
+                          "soil_water_pct": "% of available water, end of week (rainfed)",
+                          "stress_days": "days/week (rainfed)",
+                          "irrigation_mm": "mm/week (if irrigated)",
+                          "irrigation_events": "waterings/week (if irrigated)",
+                          "smap_rootzone_m3m3": "m³/m³ (SMAP, for comparison)"},
+                "rows": weeks,
+            },
+            "totals": {
+                "irrigation_need": measure(result["net_irrigation_mm"], "mm", wsrc),
+                "irrigation_events": measure(result["irrigation_events"], "waterings", wsrc),
+                "stress_days": measure(result["water_stress_days"], "days", wsrc),
+                "rain": measure(result["rain_mm"], "mm", ["imerg"]),
+                "crop_water_demand": measure(result["etc_mm"], "mm", ["power", "fao56"]),
+            },
+            "smap_check": {
+                "available": smap_ok,
+                "note": {"en": "SMAP root-zone soil moisture is shown next to the model for "
+                               "comparison. Its rain input is corrected to IMERG, so it is not an "
+                               "independent check.",
+                         "bn": "তুলনার জন্য SMAP মাটির আর্দ্রতা দেখানো হয়েছে। এর বৃষ্টির তথ্য "
+                               "IMERG দিয়ে সংশোধিত, তাই এটি স্বাধীন যাচাই নয়।"}
+                if smap_ok else {"en": "SMAP starts 2015-03-31, so there is no soil-moisture "
+                                       "comparison for this season.",
+                                 "bn": "SMAP ২০১৫-০৩-৩১ থেকে শুরু, তাই এই মৌসুমে তুলনা নেই।"},
+            },
+        }
+        t = data["totals"]
+        name, cname = DISTRICTS[did], CROP_NAMES[c]
+        irr, ev, st, rain = (t["irrigation_need"]["value"], t["irrigation_events"]["value"],
+                             t["stress_days"]["value"], t["rain"]["value"])
+        sd = data["sow_date"]
+        texts = {
+            "en": f"An example from a past year, not a forecast: {cname['en']} sown {sd} in the "
+                  f"{name['en']} area. Without irrigation it had {st} water-stress days; keeping it "
+                  f"out of stress needed about {irr} mm of irrigation "
+                  f"({ev} watering{'' if ev == 1 else 's'}). Season "
+                  f"rain: {rain} mm.",
+            "bn": f"অতীতের একটি উদাহরণ, পূর্বাভাস নয়: {name['bn']} এলাকায় {bn_digits(sd)} তারিখে বোনা "
+                  f"{cname['bn']}। সেচ ছাড়া {bn_digits(st)} দিন পানির অভাব ছিল; তা এড়াতে {bn_digits(ev)} "
+                  f"বারে প্রায় {bn_digits(irr)} মিমি সেচ লেগেছিল। মৌসুমের বৃষ্টি: {bn_digits(rain)} মিমি।",
+            "sms_en": f"{yr} replay: {cname['en']} sown {sd} needed ~{irr} mm irrigation "
+                      f"(example, not forecast).",
+            "sms_bn": f"{bn_digits(yr)}: {bn_digits(sd)} বোনা {cname['bn']}-এ ~{bn_digits(irr)} মিমি সেচ "
+                      f"লেগেছিল (উদাহরণ)।",
+        }
+        fallback = {"en": "A past-year example, not a forecast. See the weekly table below.",
+                    "bn": "অতীতের উদাহরণ, পূর্বাভাস নয়। নিচের সাপ্তাহিক তালিকা দেখুন।",
+                    "sms_en": "CropShift: past-year example (not a forecast).",
+                    "sms_bn": "CropShift: অতীতের উদাহরণ (পূর্বাভাস নয়)।"}
+        notices = district_notices(did) + [{"level": "info",
+                                            "en": "An example from a past year, never a forecast.",
+                                            "bn": "অতীতের একটি উদাহরণ, কখনও পূর্বাভাস নয়।"}]
+        return data, narrate(texts, fallback, data), notices
+
+    return respond(endpoint, request, build)
+
+
+# ---------------- not built yet: serve the mock ----------------
+
+NOT_BUILT = {"level": "caution",
+             "en": "Not built yet: this is example data (MOCK DATA), not a result.",
+             "bn": "এখনও তৈরি হয়নি: এটি উদাহরণ তথ্য (মক ডেটা), ফলাফল নয়।"}
+
+
+def mock_response(name, endpoint, request):
+    with open(os.path.join(MOCK_DIR, f"{name}.json"), encoding="utf-8") as f:
+        body = json.load(f)
+    body.update({"endpoint": endpoint, "request": request, "is_mock": True,
+                 "generated_at": _dt.datetime.now(BD_TZ).isoformat(timespec="seconds")})
+    body["notices"] = [NOT_BUILT] + list(body.get("notices", []))
+    return JSONResponse(body)
+
+
+@app.get("/api/v1/enso-lens")
+def enso_lens(request: Request):
+    return mock_response("enso_lens", "/api/v1/enso-lens", dict(request.query_params))
+
+
+@app.get("/api/v1/warnings")
+def warnings(request: Request):
+    return mock_response("warnings", "/api/v1/warnings", dict(request.query_params))
+
+
+@app.post("/api/v1/ask")
+async def ask(request: Request):
+    try:
+        body = await request.json()
+    except ValueError:
+        body = {}
+    return mock_response("ask", "/api/v1/ask", body if isinstance(body, dict) else {})

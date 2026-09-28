@@ -70,16 +70,15 @@ def _days_to_normal(series, flood_date, pct, window_days, hold_days):
     or below that day's calendar-window percentile threshold. Returns
     {"days", "date"} with both None if the series never recovers."""
     after = series[series.index >= flood_date]
-    is_below = []
-    for d in after.index:
-        threshold = _calendar_window_percentile(series, d, pct, window_days)
-        is_below.append(threshold is not None and series.loc[d] <= threshold)
-    below = pd.Series(is_below, index=after.index)
+    # Stops at the first qualifying run (same answer as scanning every day,
+    # but the API needs it in seconds, not the ~30 s a full scan takes).
     run = 0
-    for i, is_below in enumerate(below):
+    for i, d in enumerate(after.index):
+        threshold = _calendar_window_percentile(series, d, pct, window_days)
+        is_below = threshold is not None and series.loc[d] <= threshold
         run = run + 1 if is_below else 0
         if run >= hold_days:
-            normal_date = below.index[i - hold_days + 1]
+            normal_date = after.index[i - hold_days + 1]
             return {"days": int((normal_date - flood_date).days), "date": str(normal_date.date())}
     return {"days": None, "date": None}
 
