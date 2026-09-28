@@ -291,6 +291,28 @@ Brahmanbaria's is mostly seasonal drawdown, rather than presenting them as
 flood recession. Added `matplotlib` to `requirements.txt`.
 `python -m pytest src -q`: 147 passed.
 
+**Claude Code** — Task 6, sowing-date risk calendar with rotation input.
+Wrote `src/compute/reference.py`, a strict loader for `data/reference/*.csv`.
+It skips PLACEHOLDER rows, non-http(s) sources, malformed items and
+unparseable values, and lists each with a reason. It parses A-B ranges and
+MMDD dates and keeps every kept row's source/page. Teammates' files were not
+edited. Also wrote `src/compute/risk_calendar.py`: GDD-calibrated stages,
+hazards only where a kept row gives both the threshold and the stage timing,
+the water balance from `water_balance.crop_season()`, a ponded-paddy need
+for boro, and `rotation_options()`. `scripts/build_risk_calendar.py` writes
+`data/processed/risk_calendar.csv` and `docs/results/risk_calendar.md`.
+Every modelling choice not from a source is a named "CropShift assumption",
+with sensitivity runs for hot days (1/3/5), threshold end and flowering
+window width. Claude reported, rather than filled, what the strict rules
+remove. The BRRI rows (file-name sources) held boro's only stage durations
+and the 12-13 C cold threshold, so the boro cold sanity check cannot run
+and its test is skipped. Mustard's flowering row is split across two lines.
+The CZIS zoning rows are skipped, are not used as a filter, and conflict
+with BBS area. It also fixed a pre-existing failing test: `post_flood.py`'s
+`crops_still_possible()` expected an older crop_calendar layout and would
+crash on the real file, so it now returns a clear pending notice.
+`python -m pytest src -q`: 191 passed, 5 skipped.
+
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA GPM IMERG (via
 Giovanni), NASA SMAP (via AppEEARS), OPERA DSWx-S1 (via NASA CMR/earthaccess),

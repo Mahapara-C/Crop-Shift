@@ -204,11 +204,13 @@ def test_raises_on_none_earliest_date():
         crops_still_possible(None, "feni")
 
 
-def test_real_crop_calendar_path_is_missing_for_now():
-    # data/reference/crop_calendar.csv has not been researched/added yet
-    # (CLAUDE.md: no source, no row) -- this documents that state rather
-    # than assuming it exists.
-    assert not os.path.exists(CROP_CALENDAR_PATH)
+def test_real_item_value_crop_calendar_is_not_misread():
+    # data/reference/crop_calendar.csv now exists in the item,value format;
+    # it must give a clear pending notice, not a crash or invented windows.
+    assert os.path.exists(CROP_CALENDAR_PATH)
+    result = crops_still_possible("2024-11-20", "feni", crops=["wheat"])
+    assert result["possible"] == []
+    assert "rotation_options" in result["pending"][0]["notice"]
 
 
 # ---------------- flood_recession ----------------
