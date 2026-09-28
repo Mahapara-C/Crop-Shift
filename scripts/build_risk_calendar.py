@@ -94,11 +94,15 @@ def crop_status_rows(specs):
 
 
 def problem_cell(r):
-    if r["sowing_date"] is None:
-        return "no date: more than 4 weeks past the window"
-    if r["problem_years"] is None:
-        return "not assessed (no sourced hazard)"
-    return f"{fmt(r['problem_years'])} of {fmt(r['n_years'])}"
+    return r["problem_line"]
+
+
+def coverage_cell(r):
+    if not r["hazards_checked"]:
+        return "–"
+    if r["coverage"] == "full":
+        return "full"
+    return f"partial — {r['coverage_notice']}"
 
 
 def rotation_rows(result, areas):
@@ -213,6 +217,7 @@ def main():
                 ("outside window", "outside_recommended_window"),
                 ("problem years", problem_cell),
                 ("hazards assessed", lambda r: r["hazards_assessed"] or "none"),
+                ("coverage", coverage_cell),
                 ("net irrigation mm (mean / worst20)",
                  lambda r: f"{fmt(r['irrigation_mm_mean'])} / {fmt(r['irrigation_mm_worst20'])}"),
                 ("stress days (mean)", "stress_days_mean"),
