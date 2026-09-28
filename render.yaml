@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: cropshift-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/districts

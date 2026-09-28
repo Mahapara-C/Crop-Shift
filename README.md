@@ -16,7 +16,21 @@ classification feature and a bilingual (Bangla/English) narrating agent.
 - `src/ml/` — trained classification model
 - `src/agents/` — orchestrator agent (free Hugging Face model, tool-calling)
 - `web/` — static frontend, calls the backend API only
-- `app.py` — Hugging Face Space entry point
+- `app.py` — FastAPI entry point for the deployed API
+
+## Hosted API
+The API (`app.py`) is packaged for Docker deployment (`Dockerfile`,
+`render.yaml`). Hugging Face Spaces was the original target, but as of
+2026-09-29 HF requires a PRO subscription to run a Docker-SDK Space even on
+free `cpu-basic` hardware (a plain free account gets `402 Payment
+Required`), so free tiers only. `scripts/deploy_hf_space.py` is kept for if
+that changes.
+Deployment moved to Render's free web service tier instead: `render.yaml`
+at the repo root is a ready Blueprint (Docker runtime, `plan: free`). To go
+live, connect this repo in the Render Dashboard ("New +" → "Blueprint") or
+authorize the Render MCP connector so it can be deployed from here — no
+live URL yet. Once deployed, free tier sleeps when idle; the first request
+after a sleep can take about a minute while it wakes up.
 
 ## AI use
 See [docs/AI_USE.md](docs/AI_USE.md) for a running log of every AI tool used.
