@@ -366,3 +366,56 @@ def test_rotation_waits_for_the_window_to_open():
     assert out["earliest_sowing_date"] == "2024-11-08"
     wheat = [o for o in out["options"] if o["crop"] == "wheat"][0]
     assert wheat["sowing_date"] == "2024-11-15" and not wheat["outside_recommended_window"]
+
+
+# ---------------- season rollover (task 6c) ----------------
+
+def _empty_ref():
+    return ReferenceData(pd.DataFrame(columns=["item", "source_title", "source_url", "page"]),
+                         pd.DataFrame(columns=["item"]))
+
+
+def test_rotation_rolls_over_to_next_season_when_every_rabi_window_has_passed():
+    # Sylhet 2022 flood: harvest 2022-06-17, ready 2022-07-07 -> in the old
+    # (Aug-Jul) season this is the tail end, past every rabi window (all in
+    # Nov-Jan) -> every option used to read window_passed=True.
+    out = rotation_options("testland", "2022-06-17", earliest_ready_date="2022-07-07",
+                           calendar=_calendar(), ref=_empty_ref())
+    assert out["earliest_sowing_date"] == "2022-07-07"
+    assert out["next_season_used"] is True and out["season"] == 2022
+    assert out["next_season_note"]
+    rabi = [o for o in out["options"] if o["crop"] != "aman_rice"]
+    assert not any(o["window_passed"] for o in rabi)
+    assert all(o["sowing_date"] is not None for o in rabi)
+    ranked = [(o["crop"], o["rank"]) for o in out["options"] if o["rank"] is not None]
+    assert ranked[:3] == [("lentil", 1), ("wheat", 2), ("potato", 3)]
+    lentil = [o for o in out["options"] if o["crop"] == "lentil"][0]
+    assert lentil["sowing_date"] == "2022-11-15"                    # next (2022) rabi season
+
+
+def test_rotation_normal_november_date_still_uses_the_same_season():
+    out = rotation_options("testland", "2024-11-08", calendar=_calendar(), ref=_empty_ref())
+    assert out["next_season_used"] is False and out["season"] == 2024
+    assert out["next_season_note"] is None
+    ranked = [(o["crop"], o["rank"]) for o in out["options"] if o["rank"] is not None]
+    assert ranked[:3] == [("lentil", 1), ("wheat", 2), ("potato", 3)]
+
+
+def test_rotation_adds_aman_option_when_sourced_window_is_still_open(tmp_path):
+    lines = [row("aman_rice.sow.window_start", "0615", "MMDD", title="BARC Aman Calendar",
+                url="https://example.org/aman.pdf"),
+             row("aman_rice.sow.window_end", "0715", "MMDD", title="BARC Aman Calendar",
+                url="https://example.org/aman.pdf")]
+    ref = make_ref(tmp_path, lines)
+
+    out = rotation_options("testland", "2022-06-17", earliest_ready_date="2022-07-07",
+                           calendar=_calendar(), ref=ref)
+    aman = out["options"][0]
+    assert aman["crop"] == "aman_rice" and aman["rank"] is None
+    assert aman["problem_line"] == ("Aman transplanting still possible until 2022-07-15 "
+                                    "(BARC Aman Calendar). Weather risk for aman is not "
+                                    "assessed yet.")
+    assert aman["citations"][0]["source_url"] == "https://example.org/aman.pdf"
+
+    out_nov = rotation_options("testland", "2024-11-08", calendar=_calendar(), ref=ref)
+    assert out_nov["options"][0]["crop"] != "aman_rice"                 # window long closed

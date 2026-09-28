@@ -115,10 +115,9 @@ WEATHER_RISKS_ONLY = {"level": "caution",
                       "bn": "প্রতিটি ফসলের জন্য শুধু তালিকাভুক্ত আবহাওয়াজনিত ঝুঁকি যাচাই করা "
                             "হয়েছে। পোকা, রোগ, মাটির পুষ্টি ও দাম যাচাই করা হয়নি।"}
 ALL_WINDOWS_PASSED = {"level": "caution",
-                      "en": "At this date every sowing window of this season (August to July) has "
-                            "passed. The next season's windows are not checked here yet.",
-                      "bn": "এই তারিখে এই মৌসুমের (আগস্ট থেকে জুলাই) সব বপনের সময় পেরিয়ে গেছে। "
-                            "পরের মৌসুমের সময় এখানে এখনও যাচাই করা হয়নি।"}
+                      "en": "No crop's sowing window, including the next rabi season, can be "
+                            "matched to this date.",
+                      "bn": "পরের রবি মৌসুম সহ কোনো ফসলের বপনের সময় এই তারিখের সাথে মেলানো যায়নি।"}
 SHARED_CELL_NOTICE = {"level": "caution",
                       "en": "Feni and Noakhali use the same NASA POWER temperature cell "
                             "(their IMERG rain cells are separate).",
@@ -580,10 +579,17 @@ def crop_option(district, option, season):
 
 
 def split_options(district, result):
-    """rotation_options() result -> (ranked options, filtered_out)."""
-    season = rc.season_of(pd.Timestamp(result["earliest_sowing_date"]))
+    """rotation_options() result -> (ranked options, filtered_out).
+
+    Skips the "aman_rice" note rotation_options() may add at the front of
+    options (task 6c): it is not one of app.py's CROP_NAMES crops and
+    carries no risk numbers, so it is not rendered through the per-crop
+    contract shape here yet."""
+    season = result.get("season", rc.season_of(pd.Timestamp(result["earliest_sowing_date"])))
     ranked, filtered = [], []
     for option in result["options"]:
+        if option["crop"] not in CROP_NAMES:
+            continue
         item = crop_option(district, option, season)
         if option["rank"] is not None:
             ranked.append(item)
@@ -781,7 +787,7 @@ def advisory(district: str = None, prev_harvest: str = None, flood_ready: str = 
                     "sms_bn": "CropShift: ফসলের তালিকা দেখুন (NASA তথ্য)।"}
         notices = (district_notices(did) + [PAST_NOT_FORECAST, WEATHER_RISKS_ONLY]
                    + coverage_notices(ranked + filtered))
-        if not ranked and all(o["reason_code"] == "TOO_LATE" for o in filtered):
+        if not ranked and filtered and all(o["sowing_date"] is None for o in filtered):
             notices.append(ALL_WINDOWS_PASSED)
         return data, narrate(texts, fallback, data), notices
 
@@ -1029,6 +1035,8 @@ def post_flood(district: str = None, flood_date: str = None, lang: str = "en"):
             before = {o["crop"]: o for o in at_once["options"]}
             rows = []
             for o in after["options"]:
+                if o["crop"] not in CROP_NAMES or o["crop"] not in before:
+                    continue                     # e.g. the aman_rice note: not one of app.py's crops
                 b = before[o["crop"]]
                 csrc = crop_src(o["crop"])
                 unit_a = f"of {o['n_years']} years" if o["n_years"] else "years"
@@ -1054,7 +1062,7 @@ def post_flood(district: str = None, flood_date: str = None, lang: str = "en"):
                     "change": change,
                     "coverage_notice": NOT_ALL_CHECKED if o["hazards_missing"] else None,
                 })
-            if not data["still_possible"]:
+            if not data["still_possible"] and data["no_longer_possible"]:
                 notices.append(ALL_WINDOWS_PASSED)
             data["cascade"] = {
                 "src": ["calendar", "smap", "post_flood"],

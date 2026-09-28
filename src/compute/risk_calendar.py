@@ -35,6 +35,7 @@ Modelling choices that are NOT from a source are in ASSUMPTIONS, labelled
 """
 
 import calendar as _calendar
+import functools
 import math
 import os
 
@@ -724,8 +725,49 @@ def _rank_key(option):
             1.0 if pd.isna(share) else share, float("inf") if pd.isna(irr) else irr)
 
 
+def _rabi_window_still_open(cal, earliest_offset):
+    """True if at least one crop in `cal` still has an open sowing slot this
+    season: earliest_offset is on or before that crop's window_end plus the
+    grid tail (GRID_AFTER_DAYS)."""
+    for _, rows in cal.groupby("crop", sort=False):
+        window_end = tuple(int(x) for x in rows.iloc[0]["window_end"].split("-"))
+        if earliest_offset <= season_offset(*window_end) + GRID_AFTER_DAYS:
+            return True
+    return False
+
+
+def _aman_option(ref, earliest):
+    """Extra rotation option: aman (kharif) transplanting is still possible
+    if `earliest` falls inside or before the sourced aman_rice sowing
+    window (same calendar year as `earliest`). Returns None if there is no
+    sourced aman_rice.sow window or the window has already closed. Carries
+    no risk numbers: aman weather risk is not assessed yet (CLAUDE.md:
+    never invent a number without a cited tool result)."""
+    window = resolve_window(ref, "aman_rice")
+    if window is None:
+        return None
+    end = pd.Timestamp(year=earliest.year, month=window["end"][0], day=window["end"][1])
+    if earliest > end:
+        return None
+    source = window["citations"][0]["source_title"].split(",")[0]
+    note = (f"Aman transplanting still possible until {end.date()} ({source}). "
+            "Weather risk for aman is not assessed yet.")
+    return {"crop": "aman_rice",
+           "window": f"{mmdd(window['start'])} to {mmdd(window['end'])}",
+           "window_passed": False, "sowing_date": None, "outside_recommended_window": None,
+           "n_years": None, "problem_years": None, "problem_share": float("nan"),
+           "hazards_assessed": "", "hazards_checked": [], "hazards_missing": [],
+           "n_hazards_checked": 0, "coverage": "not_assessed",
+           "coverage_notice": "Weather risk for aman is not assessed yet.",
+           "irrigation_mm_mean": float("nan"), "irrigation_mm_worst20": float("nan"),
+           "stress_days_mean": float("nan"), "maturity_date": None,
+           "fits_before_next_crop": None, "rank": None, "problem_line": note,
+           "citations": window["citations"]}
+
+
 def rotation_options(district, previous_crop_harvest_date, earliest_ready_date=None,
-                     turnaround_days=TURNAROUND_DAYS, planned_next_crop=None, calendar=None):
+                     turnaround_days=TURNAROUND_DAYS, planned_next_crop=None, calendar=None,
+                     ref=None):
     """
     What to sow after the previous crop (e.g. aman) is harvested.
 
@@ -734,6 +776,17 @@ def rotation_options(district, previous_crop_harvest_date, earliest_ready_date=N
     (post_flood.earliest_sowing_date). For each crop the first calendar
     sowing date on or after max(earliest sowing, the crop's window start)
     is used: nobody sows before the recommended window opens.
+
+    If every rabi crop's sowing window (plus the 4-week grid tail) has
+    already passed for the season `earliest` falls in (e.g. a flood ready
+    date in June/July, near the end of the Aug-Jul season), the NEXT
+    season's windows are used instead; next_season_used is set and
+    next_season_note explains it in plain language.
+
+    If a sourced aman_rice.sow window (data/reference, via `ref`) covers or
+    is still ahead of `earliest`, an "aman_rice" option is added at the
+    front of "options" saying transplanting is still possible; it carries
+    no risk numbers (aman weather risk is not assessed yet).
 
     Crops are ranked by problem-year share, tie-broken by worst-20% net
     irrigation. Crops with no sourced hazard are listed but not ranked, and
@@ -749,10 +802,13 @@ def rotation_options(district, previous_crop_harvest_date, earliest_ready_date=N
     were evaluated for it.
 
     calendar: a build_calendar() DataFrame (default: data/processed/
-    risk_calendar.csv).
+    risk_calendar.csv). ref: a ReferenceData for the aman_rice check
+    (default: load_reference_for_calendar()).
     """
     if calendar is None:
         calendar = pd.read_csv(RISK_CALENDAR_PATH)
+    if ref is None:
+        ref = load_reference_for_calendar()
     cal = calendar[calendar["district"] == district]
     if cal.empty:
         raise ValueError(f"No risk calendar rows for district {district!r}")
@@ -764,6 +820,16 @@ def rotation_options(district, previous_crop_harvest_date, earliest_ready_date=N
         basis = f"post-flood ready date {earliest.date()}"
     season = season_of(earliest)
     earliest_offset = season_offset(earliest.month, earliest.day)
+
+    next_season_used = False
+    next_season_note = None
+    if not _rabi_window_still_open(cal, earliest_offset):
+        season += 1
+        earliest_offset = -1   # before every crop's window: nobody sows before it opens anyway
+        next_season_used = True
+        next_season_note = (f"Every rabi (winter) crop's sowing window for the {harvest.year}"
+                            f"-{harvest.year + 1} season had already passed by {earliest.date()}; "
+                            "showing the next rabi season's windows instead.")
 
     next_end = None
     if planned_next_crop is not None:
@@ -830,8 +896,15 @@ def rotation_options(district, previous_crop_harvest_date, earliest_ready_date=N
             option["rank"] = rank
         else:
             option["rank"] = None
+
+    aman_option = _aman_option(ref, earliest)
+    if aman_option is not None:
+        options.insert(0, aman_option)
+
     return {"district": district, "earliest_sowing_date": str(earliest.date()),
-            "basis": basis, "planned_next_crop": planned_next_crop, "options": options}
+            "basis": basis, "season": season, "next_season_used": next_season_used,
+            "next_season_note": next_season_note, "planned_next_crop": planned_next_crop,
+            "options": options}
 
 
 # ---------------- information only ----------------
@@ -845,5 +918,6 @@ def district_area(ref, district):
     return out
 
 
+@functools.lru_cache(maxsize=1)
 def load_reference_for_calendar():
     return load_reference(files=list(REFERENCE_FILES))

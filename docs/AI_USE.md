@@ -349,11 +349,53 @@ warmed at startup (~13 s), so warm requests take 0.02-0.06 s, and a new flood da
 takes ~2 s once. New contract tests are in `src/api/test_app.py` (81). Contract
 differences are proposed in `docs/contract_change_proposals.md`; the shared
 `docs/api_contract.md` and `web/mock/` were not edited. Bangla strings need
-review by a Bangla speaker. Known limitation (compute, not fixed here):
-`rotation_options()` puts a June/July ready date at the end of the previous
-Aug-Jul season, so every rabi window reads as passed (e.g. Sylhet flood of
-2022-06-17). The API shows a notice for it. `python -m pytest src -q`: 273 passed,
-5 skipped.
+review by a Bangla speaker. Known limitation (compute, fixed in task 6c
+below): `rotation_options()` put a June/July ready date at the end of the
+previous Aug-Jul season, so every rabi window read as passed (e.g. Sylhet
+flood of 2022-06-17). `python -m pytest src -q`: 273 passed, 5 skipped.
+
+**Claude Code** — Task 6c, the season-rollover bug: a June/July earliest
+sowing date (e.g. Sylhet flood 2022-06-17, ready 2022-07-07) reads as the
+tail end of the previous Aug-Jul season, past every rabi window
+(Nov-Jan), so `rotation_options()` reported `window_passed=True` for
+every rabi crop with no sowing date. Reproduced with
+`rc.rotation_options('sylhet', '2022-06-17', '2022-07-07')`.
+
+Before the fix, every option (wheat, mustard, lentil, potato, boro_rice)
+had `window_passed=True, sowing_date=None, rank=None`. After: if every
+rabi crop's window (plus the 4-week grid tail) has already passed for the
+season the earliest date falls in, `rotation_options()` now rolls over to
+the next rabi season instead (new `season`/`next_season_used`/
+`next_season_note` fields on the result); for the Sylhet example it picks
+mustard (2022-10-15, rank 1), lentil (2022-10-24, rank 2), wheat
+(2022-11-15, rank 3), potato (2022-11-01, rank 4), boro_rice
+(2022-12-05, not ranked: no live hazard) — none `window_passed`.
+Separately, if the earliest date falls inside or before the sourced
+`aman_rice.sow.window_start/window_end` (data/reference/crop_calendar.csv,
+BARC crop calendar, loaded via `reference.py`; that file was not edited),
+an `aman_rice` option is added at the front of `options` — "Aman
+transplanting still possible until 2022-07-30 (Crop Calendar - Aman Rice
+...). Weather risk for aman is not assessed yet." — with the citation in
+its `citations` field and no invented risk numbers (`rank: None`,
+`hazards_checked: []`).
+
+`app.py`: `split_options()` and the `/post-flood` cascade loop now skip
+the `aman_rice` note (it is not one of app.py's `CROP_NAMES` crops and
+carries no risk numbers, so it is not rendered through the per-crop
+contract shape yet — a follow-up task, not this one). `crop_option()`'s
+sowing-window display dates now use the `season` `rotation_options()`
+actually used, so a rolled-over rabi season shows the correct year.
+`ALL_WINDOWS_PASSED`'s text and trigger condition (`/advisory` and
+`/post-flood`) were updated to fire only when every crop is truly
+unavailable (every option's `sowing_date` is `None`), since a rolled-over
+season almost always has *something* available now.
+
+New pytest coverage in `src/compute/test_risk_calendar.py`: the Sylhet
+2022 rollover case (every rabi crop gets a real sowing date, none
+`window_passed`, ranking unchanged from the equivalent November case);
+the aman_rice option's exact text and citation; a normal November harvest
+date behaves exactly as before (no rollover, no aman option).
+`python -m pytest src -q`: 276 passed, 5 skipped (3 new tests).
 
 ## Data sources
 All NASA/scientific data used is from NASA POWER, NASA GPM IMERG (via
