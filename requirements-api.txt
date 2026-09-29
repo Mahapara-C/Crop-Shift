@@ -1,0 +1,7 @@
+   fastapi>=0.110
+   uvicorn>=0.29
+   pandas>=2
+   numpy>=1
+   scipy>=1
+   requests>=2
+   python-dotenv>=1
