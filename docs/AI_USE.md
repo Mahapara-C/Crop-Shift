@@ -418,3 +418,22 @@ citations per number.
   whole-year soil-moisture ranking penalizing every dry-season crop. That
   ranking was replaced with a seasonal percentile, validated against
   independent POWER rainfall (scripts/check_smap_years.py).
+
+**Claude Code (task 10b)** — wrote `Dockerfile`, `.dockerignore`, and
+`scripts/deploy_hf_space.py` (huggingface_hub upload script) to deploy
+`app.py` to a Hugging Face Space. Running the deploy script surfaced that
+HF now requires a PRO subscription to create a Docker-SDK Space even on
+free `cpu-basic` hardware (`402 Payment Required` on a plain free
+account) — per CLAUDE.md's free-tiers-only rule, this was reported instead
+of proceeding on a paid tier. Asked, the user chose to redeploy on
+Render's free tier instead. Wrote `render.yaml` (Docker runtime,
+`plan: free`) reusing the same Dockerfile, and changed the Dockerfile's
+`CMD` to read `$PORT` (falling back to 7860) so the same image works on
+both Render (which assigns `PORT`) and a future HF Space. Neither the
+Render MCP connector nor a `RENDER_API_KEY` was available in this
+session, so the actual deploy (creating the service, polling the live
+URL, timing the three test calls) is left for the user or a follow-up
+session — see the "Hosted API" section of README.md. Verified locally
+instead: `python -m pytest src -q` (276 passed, 5 skipped) and
+`uvicorn app:app` serving `/api/v1/districts`, `/api/v1/advisory` and
+`/api/v1/post-flood` with 200 responses.
