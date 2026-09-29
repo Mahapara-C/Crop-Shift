@@ -31,6 +31,21 @@ live, connect this repo in the Render Dashboard ("New +" → "Blueprint") or
 authorize the Render MCP connector so it can be deployed from here — no
 live URL yet. Once deployed, free tier sleeps when idle; the first request
 after a sleep can take about a minute while it wakes up.
+The API is live at https://cropshift-api-eg28.onrender.com/ (`/` redirects to
+the interactive docs at `/docs`).
+
+## Website
+`web/app/` is a static site (no build step). It only renders the API's JSON:
+it never computes rankings, dates or risks and never calls NASA or Hugging
+Face. The API address is one line in `web/app/config.js` (`"mock"` reads
+`web/mock/*.json`; `?api=<url>` in the page address overrides it for tests).
+`render.yaml` also defines `cropshift-web`, a free Render static site that
+publishes `web/app/`.
+
+- Open it locally: `python -m http.server 8080 --directory web`, then
+  http://localhost:8080/app/ (or http://localhost:8080/app/?api=mock).
+- The free API sleeps; the site shows "Waking up the server" and keeps the
+  last good answers in the browser as an "offline copy".
 
 ## AI use
 See [docs/AI_USE.md](docs/AI_USE.md) for a running log of every AI tool used.

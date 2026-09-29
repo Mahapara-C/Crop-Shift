@@ -437,3 +437,25 @@ session — see the "Hosted API" section of README.md. Verified locally
 instead: `python -m pytest src -q` (276 passed, 5 skipped) and
 `uvicorn app:app` serving `/api/v1/districts`, `/api/v1/advisory` and
 `/api/v1/post-flood` with 200 responses.
+
+**Claude Code (task 12)** — connected the prototype website (`web/app/`)
+to the API. In `web/app/index.html` it removed the hard-coded sample data
+(crop, plan, flood and source constants) and the in-browser ranking
+(`scorePlan` etc.) and rewrote the data layer so every number shown comes
+from `/advisory`, `/post-flood`, `/field-twin` or `/districts`, each with a
+source link to the response's provenance. It kept the look, screens,
+animations, EN/Bangla, voice and navigation; added the source-mode badge,
+notices, errors in the chosen language, a "waking up the server" state with
+retry, and localStorage "offline copies". API text is read aloud with the
+phone's Bangla voice when there is no recorded clip. It wrote
+`web/app/config.js`, removed the direct NASA GIBS map layer, and marked
+water access, priorities and soil as "coming soon". On the backend it added
+optional `lat`/`lon` (nearest district within 60 km), `problem_line`,
+`aman_option`, the SMAP recovery curve (`post_flood.smap_recovery_curve()`,
+with tests), flood images via `GET /api/v1/images/{name}`, per-week twin
+events, and `GET /` → `/docs`; added a Render static site to `render.yaml`
+and copied the images into the Docker image. Checked with
+`python -m pytest src -q` and in a browser against a local uvicorn, the
+mock files and the live API. Bangla strings were written with AI help and
+need a review by a Bangla speaker.
+

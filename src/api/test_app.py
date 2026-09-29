@@ -294,6 +294,16 @@ ERRORS = [
     ("/api/v1/field-twin?district=cumilla&year=2015&crop=wheat&sow_date=2019-11-10", 400,
      "BAD_PARAMETER"),
     ("/api/v1/no-such-endpoint", 404, "BAD_PARAMETER"),
+    # task 12: GPS points. Dhaka is ~74 km from the nearest district point.
+    ("/api/v1/advisory?lat=23.81&lon=90.41&prev_harvest=2024-11-10", 400, "DISTRICT_NOT_COVERED"),
+    ("/api/v1/post-flood?lat=23.81&lon=90.41&flood_date=2024-08-21", 400, "DISTRICT_NOT_COVERED"),
+    ("/api/v1/field-twin?lat=23.81&lon=90.41&crop=wheat&sow_date=2019-11-10", 400,
+     "DISTRICT_NOT_COVERED"),
+    ("/api/v1/advisory?lat=23.4&prev_harvest=2024-11-10", 400, "BAD_PARAMETER"),
+    ("/api/v1/advisory?lat=abc&lon=91.1&prev_harvest=2024-11-10", 400, "BAD_PARAMETER"),
+    ("/api/v1/advisory?lat=123&lon=91.1&prev_harvest=2024-11-10", 400, "BAD_PARAMETER"),
+    ("/api/v1/images/app.py", 404, "NO_DATA_FOR_PERIOD"),
+    ("/api/v1/images/dswx_flood_feni_2030-01-01.png", 404, "NO_DATA_FOR_PERIOD"),
 ]
 
 
@@ -306,6 +316,87 @@ def test_errors_use_the_error_envelope(url, status, code):
     assert body["data"] is None and body["narration"] is None
     assert [e["code"] for e in body["errors"]] == [code]
     assert body["errors"][0]["en"] and body["errors"][0]["bn"]
+
+
+# ---------------- task 12: GPS points, images, website fields ----------------
+
+def test_nearest_district_and_distance():
+    assert api.nearest_district(23.47, 91.15)[0] == "cumilla"
+    assert api.nearest_district(24.9, 91.87)[0] == "sylhet"
+    did, km = api.nearest_district(23.0159, 91.3976)   # the Feni point itself
+    assert did == "feni" and km < 0.01
+    assert api.haversine_km(23.0, 91.0, 24.0, 91.0) == pytest.approx(111.2, abs=0.5)
+
+
+@pytest.mark.parametrize("url", [
+    "/api/v1/advisory?lat=23.47051&lon=91.15637&prev_harvest=2024-11-10",
+    "/api/v1/post-flood?lat=23.47051&lon=91.15637&flood_date=2024-08-21",
+    "/api/v1/field-twin?lat=23.47051&lon=91.15637&year=2019&crop=mustard&sow_date=2019-11-10",
+])
+def test_lat_lon_is_turned_into_a_district_by_the_backend(url):
+    body = client.get(url).json()
+    assert body["errors"] == []
+    loc = body["data"]["location"]
+    assert loc["district"] == "cumilla" and body["data"]["district"] == "cumilla"
+    assert loc["distance_km"]["value"] < 60
+    ids = {p["id"] for p in body["provenance"]}
+    assert "assumptions" in ids
+
+
+def test_lat_lon_wins_over_district_and_matches_the_district_answer():
+    by_point = client.get("/api/v1/advisory?district=sylhet&lat=23.0159&lon=91.3976"
+                          "&prev_harvest=2024-11-10").json()["data"]
+    by_name = client.get("/api/v1/advisory?district=feni&prev_harvest=2024-11-10").json()["data"]
+    assert by_point["district"] == "feni"
+    assert by_point["options"] == by_name["options"]
+    assert by_name["location"] is None
+
+
+def test_advisory_problem_line_and_aman(responses):
+    for o in responses["advisory"]["data"]["options"]:
+        n = responses["advisory"]["data"]["years_used"]["value"]
+        assert o["problem_line"]["en"].startswith(f"Problems in {o['problem_years']['value']} of {n}")
+        assert o["hazards_checked_text"]["en"] in o["problem_line"]["en"]
+        assert o["problem_line"]["bn"]
+    assert responses["advisory"]["data"]["aman_option"] is None      # November: aman is over
+    july = client.get("/api/v1/advisory?district=feni&prev_harvest=2026-07-10").json()["data"]
+    aman = july["aman_option"]
+    assert aman["crop"] == "aman_rice" and aman["coverage_notice"]["en"]
+    assert aman["sowing_window"]["src"] and "not assessed" in aman["problem_line"]["en"]
+
+
+def test_post_flood_smap_curve_and_images(responses):
+    data = responses["post_flood"]["data"]
+    curve = data["soil_back_to_normal"]["curve"]
+    rows = {r["date"]: r for r in curve["rows"]}
+    assert curve["src"] == ["smap", "post_flood"]
+    assert "2024-08-21" in rows and data["soil_back_to_normal"]["date"] in rows
+    normal = rows[data["soil_back_to_normal"]["date"]]
+    assert normal["value"] <= normal["threshold"]
+    assert [i["date"] for i in data["flood_images"]] == ["2024-08-21", "2024-09-02", "2024-09-26",
+                                                         "2024-10-15"]
+    assert responses["post_flood_sylhet"]["data"]["flood_images"] == []
+
+
+def test_image_endpoint_serves_only_whitelisted_pngs():
+    r = client.get("/api/v1/images/dswx_flood_feni_2024-08-21.png")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    assert r.content[1:4] == b"PNG"
+
+
+def test_field_twin_weeks_carry_events(responses):
+    weekly = responses["field_twin"]["data"]["weekly"]
+    allowed = {"heat", "night_heat", "cold", "rain", "dry", "irrigation", "ok"}
+    for row in weekly["rows"]:
+        assert row["events"] and set(row["events"]) <= allowed
+        assert ("dry" in row["events"]) == (row["stress_days"] > 0)
+        assert ("irrigation" in row["events"]) == (row["irrigation_events"] > 0)
+    assert weekly["events_rule"]["rain_week"]["value"] == 20
+
+
+def test_root_redirects_to_docs():
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code in (302, 307) and r.headers["location"] == "/docs"
 
 
 # ---------------- not built yet ----------------

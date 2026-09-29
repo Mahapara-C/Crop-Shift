@@ -126,6 +126,42 @@ def smap_days_to_normal(smap_df, flood_date, pct=80, window_days=15, hold_days=7
     }
 
 
+def smap_recovery_curve(smap_df, start, end, pct=80, window_days=15, value_col="sm_rootzone"):
+    """
+    The data behind smap_days_to_normal(), for a chart: every SMAP day from
+    `start` to `end` (inclusive) with its root-zone value and that day's
+    "normal" threshold (the same calendar-window percentile of every OTHER
+    year that smap_days_to_normal() uses).
+
+    Returns a DataFrame with columns date, value, threshold (threshold is
+    NaN if no other year has data in the window). Days with no SMAP value
+    are left out.
+    """
+    if isinstance(smap_df, pd.DataFrame):
+        series = smap_df[value_col]
+    else:
+        series = smap_df
+    if not isinstance(series.index, pd.DatetimeIndex):
+        raise ValueError("smap_df must have (or be indexed by) dates")
+    series = series.sort_index().dropna()
+    start, end = pd.Timestamp(start), pd.Timestamp(end)
+    if end < start:
+        raise ValueError("end must not be before start")
+    part = series[(series.index >= start) & (series.index <= end)]
+    # Same threshold as _calendar_window_percentile(), with the day-of-year
+    # table built once instead of once per day (keeps the API fast).
+    doys = np.array([_doy(d.month, d.day) for d in series.index])
+    years = np.asarray(series.index.year)
+    values = series.to_numpy()
+    thresholds = []
+    for d in part.index:
+        diff = np.abs(doys - _doy(d.month, d.day))
+        mask = (np.minimum(diff, 365 - diff) <= window_days) & (years != d.year)
+        thresholds.append(float(np.percentile(values[mask], pct)) if mask.any() else None)
+    return pd.DataFrame({"date": part.index, "value": part.values,
+                         "threshold": [np.nan if t is None else t for t in thresholds]})
+
+
 def water_persistence(dswx_df, water_threshold=0.1, valid_threshold=0.5,
                       date_col="date", water_col="water_fraction", valid_col="valid_fraction"):
     """
