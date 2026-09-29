@@ -1,0 +1,1264 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Survey Crops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;600;700&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --night:#06101B; --deep:#0B2630; --moss:#12382C;
+  --panel:rgba(255,255,255,.06); --line:rgba(255,255,255,.13);
+  --ink:#F4F1E6; --mute:rgba(244,241,230,.62);
+  --gold:#F2C14E; --leaf:#7BD389; --water:#4FC3F7; --coral:#FF7A6B; --amber:#FFB547; --teal:#2BB3A3;
+  --display:"Space Grotesk","Noto Sans Bengali",system-ui,sans-serif;
+  --body:"Inter","Noto Sans Bengali",system-ui,sans-serif;
+  --bn:"Noto Sans Bengali","Inter",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--night);color:var(--ink);font:15px/1.45 var(--body);display:flex;justify-content:center;padding-inline:0;overflow:hidden}
+body.lang-bn{font-family:var(--bn)}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.app{position:relative;width:100%;max-width:440px;height:100%;display:flex;flex-direction:column;
+  background:radial-gradient(120% 60% at 0% 0%,rgba(43,179,163,.22),transparent 60%),radial-gradient(90% 50% at 100% 100%,rgba(242,193,78,.14),transparent 60%),linear-gradient(180deg,var(--night),var(--deep) 55%,var(--moss));overflow:hidden}
+/* top bar */
+.top{flex:0 0 auto;z-index:20;display:flex;align-items:center;gap:6px;padding:12px 12px 8px;background:linear-gradient(180deg,rgba(6,16,27,.92),rgba(6,16,27,.6) 80%,transparent)}
+.logo{display:flex;align-items:center;gap:6px;font:700 17px var(--display);margin-right:auto;cursor:pointer;white-space:nowrap}
+@media (max-width:380px){.logo{font-size:14px;gap:4px}}
+.logo i{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--leaf));display:block}
+.seg{display:flex;padding:3px;border-radius:99px;background:var(--panel);border:1px solid var(--line)}
+.seg button{padding:5px 10px;border-radius:99px;font-weight:700;font-size:12px;opacity:.7;min-height:30px}
+.seg button[aria-pressed="true"]{background:var(--gold);color:#10202A;opacity:1}
+.iconbtn{width:36px;height:36px;flex:0 0 36px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line)}
+.iconbtn[aria-pressed="true"]{background:rgba(123,211,137,.2);border-color:var(--leaf);color:var(--leaf)}
+.iconbtn.speak{background:var(--gold);color:#10202A;border-color:transparent}
+.iconbtn.speak.on{animation:breathe 1s ease-in-out infinite}
+.aa{font:700 14px var(--display)}
+/* screens */
+main{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 16px 24px;overscroll-behavior:contain}
+.screen{display:none;animation:rise .45s ease-out both}
+.screen.on{display:block}
+@keyframes rise{from{opacity:.001;transform:translateY(14px)}to{opacity:1;transform:none}}
+h1{font:700 28px/1.15 var(--display);margin:6px 0 4px;text-wrap:balance}
+.lang-bn h1{font-family:var(--bn);font-size:26px}
+.sub{color:var(--mute);font-size:13px;margin:0 0 14px;max-width:60ch}
+.eyebrow{display:inline-flex;align-items:center;gap:6px;color:var(--gold);font-weight:600;font-size:12px;letter-spacing:.02em}
+.eyebrow::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--gold)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:14px}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:54px;border-radius:16px;font-weight:700;font-size:16px}
+.btn.gold{background:linear-gradient(90deg,var(--gold),#E8A93A);color:#10202A;box-shadow:0 8px 24px rgba(242,193,78,.3)}
+.btn.teal{background:linear-gradient(90deg,var(--teal),var(--water));color:#06201D}
+.btn.ghost{border:1px solid var(--line)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.mock{font-size:10px;font-weight:600;color:#FFD28A;background:rgba(255,181,71,.12);border:1px solid rgba(255,181,71,.35);border-radius:10px;padding:5px 10px}
+.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:50;width:min(400px,calc(100% - 32px));background:#0C1F29;border:1px solid var(--water);border-radius:14px;padding:12px 14px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+/* start */
+.orbit{position:relative;height:230px;display:grid;place-items:center;margin:4px 0 6px}
+.ring{position:absolute;border-radius:50%;border:1.5px dashed rgba(255,255,255,.2)}
+.r1{width:230px;height:230px}.r2{width:170px;height:170px;border:1px solid rgba(43,179,163,.3)}
+.earth{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#35C9B4,#12605A 55%,#08282C);box-shadow:0 0 60px rgba(43,179,163,.55);position:relative;overflow:hidden}
+.earth b{position:absolute;border-radius:50%;background:rgba(123,211,137,.5)}
+.pin{position:absolute;width:12px;height:12px;border-radius:50%;background:var(--gold);border:2px solid #10202A;left:calc(50% + 4px);top:calc(50% - 6px);box-shadow:0 0 12px var(--gold)}
+.pin::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--gold);animation:pulse 1.6s ease-out infinite}
+.sat{position:absolute;width:230px;height:230px;animation:spin 14s linear infinite}
+.sat span{position:absolute;left:50%;top:-8px;transform:translateX(-50%);display:flex;gap:3px;align-items:center}
+.sat span i{width:18px;height:8px;background:var(--water);border-radius:2px;display:block}.sat span b{width:14px;height:14px;background:#F4F1E6;border-radius:4px;display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{from{transform:scale(1);opacity:1}to{transform:scale(3.4);opacity:0}}
+@keyframes breathe{50%{transform:scale(1.08)}}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:8px 14px;border-radius:99px;border:1px solid var(--line);background:var(--panel);font-weight:600;font-size:13px;min-height:40px}
+.chip[aria-pressed="true"]{border-color:var(--gold);color:var(--gold);background:rgba(242,193,78,.12)}
+/* map */
+.map{position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--line);aspect-ratio:1/1.05;max-width:100%;background:#16301F;touch-action:manipulation}
+.map svg{display:block;width:100%;height:100%;cursor:crosshair}
+.gpschip{position:absolute;left:12px;top:12px;display:flex;align-items:center;gap:8px;background:rgba(6,16,27,.8);border:1px solid rgba(79,195,247,.5);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.gpschip i{width:8px;height:8px;border-radius:50%;background:var(--leaf)}
+.gpulse{animation:pulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
+.outline{stroke-dasharray:420;stroke-dashoffset:420;animation:draw 1.1s .3s ease-in-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.note{display:flex;gap:10px;background:rgba(79,195,247,.1);border-radius:14px;padding:10px 12px;font-size:12px;color:var(--mute)}
+.note::before{content:"";flex:0 0 4px;border-radius:2px;background:var(--water)}
+/* crops */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 10px;border-radius:20px;background:var(--panel);border:1px solid var(--line);text-align:center;position:relative;min-height:170px}
+.tile[aria-pressed="true"]{border:2px solid var(--gold);background:rgba(242,193,78,.12)}
+.tile[aria-pressed="true"]::after{content:"✓";position:absolute;right:10px;top:8px;width:24px;height:24px;border-radius:50%;background:var(--gold);color:#10202A;font-weight:700;display:grid;place-items:center;font-size:14px}
+.pic{width:68px;height:68px;border-radius:50%;background:radial-gradient(circle,#2F6B4A,#173828);display:grid;place-items:center}
+.tname{font-weight:700;font-size:16px}
+.tbn{font-family:var(--bn);font-size:12px;color:var(--mute)}
+.bad{font-size:10px;font-weight:700;border-radius:99px;padding:3px 8px;background:rgba(123,211,137,.16);color:#9BE3A6}
+.bad.hi{background:rgba(255,122,107,.16);color:#FF9A8C}
+/* twin */
+.scene{position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--line)}
+.scene svg{display:block;width:100%;height:auto}
+.wchip{position:absolute;left:12px;top:12px;background:rgba(6,16,27,.78);border-radius:99px;padding:6px 12px;font-weight:700;font-size:13px;color:#9BE3A6;max-width:calc(100% - 24px)}
+.wchip.warn{color:var(--amber)}
+.date{position:absolute;right:12px;bottom:10px;background:rgba(6,16,27,.7);border-radius:10px;padding:4px 10px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.grow{transform-box:fill-box;transform-origin:50% 100%;transition:transform .9s cubic-bezier(.2,.8,.2,1)}
+.head{transition:opacity .6s,transform .6s;transform-box:fill-box;transform-origin:50% 100%}
+.stem{transition:stroke .8s}.lf{transition:fill .8s}
+.rain line{stroke:#8FD8FA;stroke-width:2;stroke-linecap:round;animation:fall .7s linear infinite}
+@keyframes fall{from{transform:translateY(-14px)}to{transform:translateY(46px)}}
+.rain,.waterl,.glow,.fog{transition:opacity .7s}
+.glow{transform-box:fill-box;transform-origin:center;animation:heat 1.4s ease-in-out infinite}
+@keyframes heat{50%{transform:scale(1.25)}}
+.controls{display:flex;align-items:center;gap:12px;margin-top:12px}
+.play{flex:0 0 52px;height:52px;border-radius:50%;background:var(--gold);color:#10202A;display:grid;place-items:center}
+input[type=range]{flex:1;accent-color:var(--gold);height:30px}
+.ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--mute);margin:2px 4px 0 68px}
+.say{display:flex;gap:12px;align-items:flex-start;margin-top:12px}
+.say .big{flex:0 0 52px;height:52px;border-radius:14px;display:grid;place-items:center;background:rgba(0,0,0,.25)}
+.say p{margin:0;font-size:16px;font-weight:600;line-height:1.4}
+.needs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.need{border-radius:14px;padding:10px;border:1px solid;font-size:11px}
+.need b{display:block;font:700 15px var(--display);color:var(--ink);margin-top:2px}
+.lang-bn .need b{font-family:var(--bn)}
+.stages{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.stage{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.04);opacity:.55;transition:opacity .4s,background .4s}
+.stage.now{opacity:1;background:rgba(242,193,78,.12);outline:1px solid rgba(242,193,78,.5)}
+.stage.done{opacity:.85}
+.wk{flex:0 0 56px;text-align:center;border-radius:8px;padding:3px 0;font:700 13px var(--display)}
+.wk small{display:block;font:700 8px var(--body);letter-spacing:.08em;opacity:.8}
+/* help */
+.modes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.mode{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;border:1px solid;font-weight:600;font-size:12px;min-height:36px}
+.pstep{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;border-radius:22px;border:1px solid var(--line);background:var(--panel);text-align:center;position:relative;min-height:190px;transition:transform .3s,border-color .3s,background .3s}
+.pstep.speaking{transform:scale(1.04);border-color:var(--gold);background:rgba(242,193,78,.14)}
+.pstep .n{position:absolute;left:10px;top:10px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--display);color:#10202A}
+.pstep .spk{position:absolute;right:8px;top:8px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.12);display:grid;place-items:center}
+.pstep .pic{width:84px;height:84px;background:rgba(6,16,27,.45)}
+.pstep strong{font-size:15px;line-height:1.25}
+.wave{display:flex;align-items:center;gap:3px;height:34px}
+.wave i{width:4px;border-radius:2px;background:var(--gold);height:30%;display:block}
+.wave.on i{animation:wv .8s ease-in-out infinite}
+@keyframes wv{50%{height:100%}}
+.pics-mode .detail{display:none}
+.pics-mode .pic{transform:scale(1.15)}
+/* bottom nav */
+nav{flex:0 0 auto;z-index:30;display:grid;grid-template-columns:repeat(6,1fr);gap:2px;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));background:rgba(6,16,27,.94);border-top:1px solid var(--line)}
+nav button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;border-radius:12px;font-size:11px;font-weight:600;color:var(--mute);min-height:56px}
+nav button[aria-current="page"]{color:var(--gold);background:rgba(242,193,78,.1)}
+/* now-crop + year strip */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid3 .tile{min-height:132px;padding:10px 6px}.grid3 .pic{width:56px;height:56px}.grid3 .tname{font-size:13px}
+h2.q{font:700 17px var(--display);margin:18px 0 8px}.lang-bn h2.q{font-family:var(--bn)}
+.harv{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hbtn{display:flex;align-items:center;gap:10px;padding:12px;border-radius:16px;border:1px solid var(--line);background:var(--panel);text-align:left;font-weight:600;font-size:13px;min-height:58px}
+.hbtn[aria-pressed="true"]{border:2px solid var(--gold);background:rgba(242,193,78,.12)}
+.hdots{display:flex;gap:3px;flex:0 0 auto}.hdots i{width:7px;height:18px;border-radius:3px;background:rgba(255,255,255,.18);display:block}.hdots i.f{background:var(--gold)}
+.early{display:flex;gap:12px;align-items:center;margin-top:12px;border-color:rgba(123,211,137,.5);background:rgba(123,211,137,.1)}
+.early .dd{flex:0 0 auto;text-align:center;background:rgba(0,0,0,.25);border-radius:14px;padding:6px 12px}
+.early .dd b{display:block;font:700 28px/1 var(--display);color:#9BE3A6}.early .dd span{font-size:10px;font-weight:700;letter-spacing:.06em}
+.year{margin:4px 0 14px}.ybar{position:relative;height:44px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);overflow:hidden}
+.yblk{position:absolute;top:6px;bottom:6px;border-radius:8px;display:flex;align-items:center;padding:0 6px;font-size:10px;font-weight:700;color:#10202A;white-space:nowrap;overflow:hidden}
+.yblk.ghost{background:repeating-linear-gradient(45deg,rgba(79,195,247,.25) 0 6px,rgba(79,195,247,.12) 6px 12px);color:#BFE9FB;border:1px dashed rgba(79,195,247,.7)}
+.ymon{display:grid;grid-template-columns:repeat(12,1fr);font-size:9px;color:var(--mute);margin-top:3px;text-align:center}
+.ynote{font-size:12px;margin-top:6px;color:var(--mute)}.ynote b{color:var(--ink)}
+.fit{font-size:10px;font-weight:700;border-radius:99px;padding:3px 8px}
+.fit.ontime{background:rgba(123,211,137,.16);color:#9BE3A6}.fit.late{background:rgba(255,181,71,.16);color:#FFD28A}.fit.toolate{background:rgba(255,122,107,.16);color:#FF9A8C}
+.tile.dim{opacity:.55}
+.late{display:flex;gap:12px;align-items:flex-start;margin-top:12px;border-color:rgba(255,181,71,.5);background:rgba(255,181,71,.08)}
+[hidden]{display:none!important}
+/* leaflet core (inlined subset of leaflet.css 1.9.4, BSD-2) */
+.leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
+.leaflet-container{overflow:hidden;background:#16301F;outline-offset:1px;font:12px var(--body);-webkit-tap-highlight-color:transparent}
+.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow{user-select:none;-webkit-user-drag:none}
+.leaflet-tile{filter:inherit;visibility:hidden}.leaflet-tile-loaded{visibility:inherit}
+.leaflet-container img.leaflet-tile{max-width:none!important;max-height:none!important;width:auto;padding:0;mix-blend-mode:plus-lighter}
+.leaflet-container .leaflet-tile{max-width:none!important}
+.leaflet-zoom-animated{transform-origin:0 0}.leaflet-zoom-anim .leaflet-zoom-animated{transition:transform .25s cubic-bezier(0,0,.25,1)}
+.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}
+.leaflet-control-container .leaflet-top,.leaflet-control-container .leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}
+.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}
+.leaflet-control{float:left;clear:both;position:relative;z-index:800;pointer-events:auto}
+.leaflet-right .leaflet-control{float:right;margin-right:8px}.leaflet-bottom .leaflet-control{margin-bottom:6px}.leaflet-top .leaflet-control{margin-top:56px}.leaflet-left .leaflet-control{margin-left:8px}
+.leaflet-control-zoom a{display:block;width:34px;height:34px;line-height:32px;text-align:center;text-decoration:none;font:700 20px var(--body);background:rgba(6,16,27,.85);color:#fff;border:1px solid var(--line)}
+.leaflet-control-zoom a:first-child{border-radius:10px 10px 0 0}.leaflet-control-zoom a:last-child{border-radius:0 0 10px 10px}
+.leaflet-control-attribution{background:rgba(6,16,27,.7);color:#ccc;font-size:9px;padding:1px 6px;border-radius:6px}.leaflet-control-attribution a{color:#8FD8FA}
+.leaflet-interactive{cursor:pointer}.leaflet-grab{cursor:grab}.leaflet-dragging .leaflet-grab{cursor:grabbing}
+.leaflet-div-icon{background:none;border:0}
+.leaf{position:absolute;inset:0;z-index:1}
+#mapsvg{position:absolute;inset:0;z-index:0}
+.map.live #mapsvg{display:none}
+.gpschip{z-index:1100}
+.layers{position:absolute;left:12px;bottom:12px;z-index:1100;display:flex;gap:6px;flex-wrap:wrap}
+.layers button{background:rgba(6,16,27,.85);border:1px solid var(--line);border-radius:99px;padding:5px 10px;font-size:11px;font-weight:700;min-height:30px}
+.layers button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+.maplinks{display:flex;gap:8px;flex-wrap:wrap}
+.maplinks a,.src a,.srcbtn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;border:1px solid rgba(79,195,247,.55);color:#8FD8FA;font-size:12px;font-weight:600;text-decoration:none;background:rgba(79,195,247,.08)}
+.srcbtn{padding:3px 9px;font-size:10px}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:800;letter-spacing:.06em;border-radius:6px;padding:2px 6px}
+.pill.real{background:rgba(123,211,137,.2);color:#9BE3A6}.pill.sample{background:rgba(255,181,71,.2);color:#FFD28A}
+/* farm inputs */
+.water{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.wopt{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:14px;border:1px solid var(--line);background:var(--panel);font-size:11px;font-weight:600;text-align:center;min-height:92px}
+.wopt[aria-pressed="true"]{border:2px solid var(--water);background:rgba(79,195,247,.12)}
+.drops{display:flex;gap:2px;height:22px;align-items:flex-end}
+.prio{display:flex;flex-wrap:wrap;gap:8px}
+.soil{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.soil div{border-radius:12px;padding:8px;background:rgba(201,163,106,.12);border:1px solid rgba(201,163,106,.4);font-size:10px;color:var(--mute)}
+.soil b{display:block;color:var(--ink);font:700 14px var(--display)}
+.lang-bn .soil b{font-family:var(--bn)}
+/* plans */
+.plan{position:relative;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:20px;border:1px solid var(--line);background:var(--panel);text-align:left;width:100%}
+.plan.best{border:2px solid var(--gold);background:linear-gradient(160deg,rgba(242,193,78,.14),rgba(255,255,255,.04))}
+.plan .row{display:flex;align-items:center;gap:12px}
+.chain{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.chain span.c{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:10px;font-size:12px;font-weight:700;color:#10202A}
+.chain i{color:var(--mute);font-style:normal}
+.sring{flex:0 0 64px}
+.sring text{font:700 16px var(--display);fill:var(--ink)}
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;align-items:center;font-size:11px;color:var(--mute)}
+.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}.bar i{display:block;height:100%;border-radius:3px}
+.badge-best{position:absolute;right:12px;top:-10px;background:var(--gold);color:#10202A;font-size:10px;font-weight:800;border-radius:99px;padding:3px 10px}
+.modal{position:fixed;inset:0;z-index:200;background:rgba(3,8,14,.72);display:flex;align-items:flex-end;justify-content:center;padding:16px;animation:rise .3s ease-out}
+.sheet{width:100%;max-width:420px;max-height:88%;overflow:auto;background:#0C1F29;border:1px solid rgba(242,193,78,.5);border-radius:24px;padding:18px;box-shadow:0 -10px 40px rgba(0,0,0,.6)}
+.sheet h3{font:700 20px var(--display);margin:4px 0 6px}.lang-bn .sheet h3{font-family:var(--bn)}
+.why{display:flex;flex-direction:column;gap:6px;margin:10px 0;padding:0;list-style:none;font-size:13px}
+.why li{display:flex;gap:8px}.why li::before{content:"✓";color:var(--leaf);font-weight:800}
+/* flood */
+.fkpi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fkpi .k{border-radius:16px;padding:12px;border:1px solid var(--line);background:var(--panel)}
+.fkpi .k b{display:block;font:700 26px/1.1 var(--display);margin:4px 0}
+.fkpi .k small{color:var(--mute);font-size:11px}
+.fchart svg{display:block;width:100%;height:auto}
+.draw{stroke-dasharray:600;stroke-dashoffset:600;animation:draw 2s .2s ease-in-out forwards}
+.pop{animation:popin .5s 2s both}@keyframes popin{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:none}}
+.rfcard{margin:10px 0 12px;padding:12px;border-color:rgba(242,193,78,.55);background:rgba(242,193,78,.07)}
+.rfcard .id{font:700 11px var(--display);letter-spacing:.08em;color:var(--gold)}
+.rfcard dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:8px 0 0;font-size:12px}.rfcard dt{color:var(--mute)}.rfcard dd{margin:0}
+.rfbtn{display:flex;gap:10px;align-items:center;text-align:left;width:100%;padding:10px 12px}
+.rfbtn[aria-pressed=true]{border-color:var(--gold);background:rgba(242,193,78,.12)}
+.vid{position:relative;border-radius:14px;overflow:hidden;background:#000;margin-top:10px;aspect-ratio:16/9}
+.vid video{width:100%;height:100%;object-fit:cover;display:block}
+.vidempty{border:2px dashed rgba(242,193,78,.5);border-radius:14px;padding:14px;margin-top:10px;font-size:12px;color:var(--mute)}
+.vidempty label{display:inline-block;margin-top:8px;padding:8px 12px;border-radius:10px;background:var(--gold);color:#1a1a1a;font-weight:700;cursor:pointer}
+.topview{position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--line);margin-bottom:10px;background:#16301F}
+.zv{position:relative;touch-action:none;user-select:none}
+.zv canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}.zv canvas:active{cursor:grabbing}
+#fieldzv{position:absolute;inset:0;z-index:1001;background:#16301F}
+.topview.zv{aspect-ratio:3/2}
+.zvbtns{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:3}
+.zvbtns button{width:38px;height:38px;border-radius:12px;border:1px solid rgba(255,255,255,.35);background:rgba(8,20,14,.72);color:#fff;font:700 20px/1 var(--display);cursor:pointer}
+.zvscale{position:absolute;left:10px;bottom:8px;color:#fff;font-size:10px;text-shadow:0 1px 2px #000;z-index:3}
+.zvscale i{display:block;height:5px;border:2px solid #fff;border-top:0;margin-bottom:2px}
+.zvnote{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:rgba(8,20,14,.8);color:#fff;font-size:10.5px;padding:5px 9px;border-radius:10px;max-width:62%;text-align:center;z-index:3;opacity:0;transition:opacity .25s;pointer-events:none}
+.zvnote.on{opacity:1}
+#topview .wchip{top:10px;left:10px;max-width:60%}
+#topview .zvscale{bottom:8px}
+#topview .zvnote{top:auto;bottom:34px;max-width:70%}
+#fieldzv .zvnote{top:auto;bottom:34px}
+.topview .wchip{position:absolute;left:10px;top:10px}
+.topview .tlbl{position:absolute;left:10px;bottom:8px;right:10px;font-size:10px;color:#fff;text-shadow:0 1px 3px #000}
+.minimap{position:relative;height:130px;border-radius:18px;overflow:hidden;border:1px solid var(--line);margin-bottom:12px}
+.minimap .lbl{position:absolute;left:10px;top:10px;z-index:1100;background:rgba(6,16,27,.8);border-radius:99px;padding:4px 10px;font-size:11px;font-weight:700}
+/* sources */
+.src{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:16px;border:1px solid var(--line);background:var(--panel)}
+.src h4{margin:0;font-size:14px}.src p{margin:0;font-size:12px;color:var(--mute)}
+.src .links{display:flex;gap:6px;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+/* task 12: live API states */
+.netbar{position:sticky;top:0;z-index:15;display:flex;gap:10px;align-items:center;margin:0 0 10px;padding:10px 12px;border-radius:14px;background:#0C1F29;border:1px solid var(--water);font-size:12px}
+.spin{flex:0 0 14px;width:14px;height:14px;border-radius:50%;border:2px solid var(--water);border-top-color:transparent;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.pill.mode{background:rgba(79,195,247,.18);color:#8FD8FA}
+.note.caution::before{background:var(--amber)}
+.note{color:var(--ink)}
+.err{border-color:rgba(255,122,107,.6)!important;background:rgba(255,122,107,.1)!important}
+.say-sum{font-size:13px;margin-bottom:10px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px;align-items:baseline}
+.kv span{color:var(--mute)}.kv b{font-weight:600}
+.haz{font-size:11px;display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.18)}
+.fimgs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fimgs figure{margin:0;border-radius:12px;overflow:hidden;background:#fff}
+.fimgs img{display:block;width:100%}
+.fimgs figcaption{font-size:10px;padding:6px;background:var(--deep);color:var(--mute)}
+.ctab{width:100%;border-collapse:collapse;font-size:11px;margin:8px 0}
+.ctab th{text-align:left;color:var(--mute);font-weight:600;padding:4px}
+.ctab td{padding:5px 4px;border-top:1px solid var(--line);vertical-align:top}
+.yrpick{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--mute);margin:0 0 8px}
+.yrpick select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+.yrpick select option{background:#0C1F29}
+</style>
+
+<div class="app" id="app">
+  <header class="top">
+    <div class="logo"><i></i>Survey Crops</div>
+    <div class="seg" role="group" aria-label="Language">
+      <button id="lang-en" aria-pressed="true">EN</button>
+      <button id="lang-bn" aria-pressed="false">বাংলা</button>
+    </div>
+    <button class="iconbtn" id="simple" aria-pressed="false" title="Simple words"><span class="aa">Aa</span></button>
+    <button class="iconbtn" id="srcBtn" title="Data sources" aria-label="Data sources"><span class="aa">i</span></button>
+    <button class="iconbtn speak" id="speak" title="Read aloud" aria-label="Read aloud"></button>
+  </header>
+
+  <main id="main">
+    <div class="netbar" id="netbar" role="status" hidden></div>
+    <!-- START -->
+    <section class="screen on" id="s-start">
+      <div class="orbit" aria-hidden="true">
+        <div class="ring r1"></div><div class="ring r2"></div>
+        <div class="earth"><b style="left:14px;top:22px;width:56px;height:36px"></b><b style="left:58px;top:62px;width:48px;height:32px"></b><b style="left:8px;top:74px;width:32px;height:24px"></b></div>
+        <div class="pin"></div>
+        <div class="sat"><span><i></i><b></b><i></i></span></div>
+      </div>
+      <span class="eyebrow" data-t="eyebrow"></span>
+      <h1 data-t="startH"></h1>
+      <p class="sub" data-t="startSub"></p>
+      <div class="stack">
+        <button class="btn gold" id="gps"><span data-icon="pin"></span><span data-t="useLoc"></span></button>
+        <p class="sub detail" style="margin:0" data-t="orPick"></p>
+        <div class="chips" id="districts"></div>
+        <h2 class="q" style="font-size:15px;margin:10px 0 0" data-t="rfH"></h2>
+        <div class="stack" id="rfList" style="gap:8px"></div>
+        <button class="card" id="teaser" style="display:flex;gap:12px;align-items:center;text-align:left;border-color:rgba(79,195,247,.5);background:rgba(79,195,247,.08);margin-top:6px"></button>
+      </div>
+    </section>
+
+    <!-- FIELD -->
+    <section class="screen" id="s-field">
+      <span class="eyebrow" data-t="step1"></span>
+      <h1 data-t="fieldH"></h1>
+      <p class="sub" data-t="fieldSub"></p>
+      <div class="map" id="map">
+        <svg id="mapsvg" viewBox="0 0 360 380" role="img" aria-label="Map of fields around your location"></svg>
+        <div id="leaf" class="leaf"></div>
+        <div class="zv" id="fieldzv" hidden><canvas></canvas><div class="zvbtns"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button><button data-z="fit" aria-label="Show my plot">⌖</button></div><div class="zvscale"><i></i><span></span></div><div class="zvnote"></div></div>
+        <div class="gpschip"><i></i><span id="coords"></span></div>
+        <div class="layers" id="layers"></div>
+      </div>
+      <p class="sub" id="mapStatus" style="margin:8px 0 0;font-size:11px"></p>
+      <div class="card rfcard" id="rfField" hidden></div>
+      <div class="stack" style="margin-top:10px">
+        <div class="card" style="display:flex;align-items:center;gap:12px;padding:10px 12px"><div style="flex:1"><strong id="areaTxt"></strong><div class="sub" style="margin:0;font-size:11px" id="areaSub"></div></div></div>
+        <div class="maplinks" id="maplinks"></div>
+        <div class="note detail" data-t="resNote"></div>
+        <button class="btn gold" id="confirmField"><span data-t="yesField"></span></button>
+      </div>
+    </section>
+
+    <!-- NOW (previous crop) -->
+    <section class="screen" id="s-prev">
+      <span class="eyebrow" data-t="stepPrev"></span>
+      <h1 data-t="prevH"></h1>
+      <p class="sub" data-t="prevSub"></p>
+      <div class="grid3" id="prevs"></div>
+      <button class="card" id="floodBtn" style="display:flex;gap:12px;align-items:center;width:100%;text-align:left;margin-top:14px"></button>
+      <div id="floodBox" hidden>
+        <h2 class="q" data-t="floodQ"></h2>
+        <div class="harv" id="fago"></div>
+        <div class="card" id="floodRes" style="margin-top:12px;border-color:rgba(79,195,247,.6);background:rgba(79,195,247,.08)"></div>
+      </div>
+      <div id="harvBox"><h2 class="q" data-t="harvQ"></h2>
+      <div class="harv" id="harv"></div></div>
+      <div class="card early" id="earliest"></div>
+      <h2 class="q"><span data-t="waterQ"></span> <span class="pill sample" data-t="soon"></span></h2>
+      <div class="water" id="water"></div>
+      <h2 class="q"><span data-t="prioQ"></span> <span class="pill sample" data-t="soon"></span></h2>
+      <div class="prio" id="prio"></div>
+      <h2 class="q"><span data-t="soilQ"></span> <span class="pill sample" data-t="soon"></span></h2>
+      <div class="soil" id="soil"></div>
+      <p class="sub" style="margin:6px 0 0;font-size:11px" id="soilNote"></p>
+      <p class="mock" style="margin-top:8px" data-t="soonNote"></p>
+      <button class="btn gold" id="toCrop" style="margin-top:16px"><span data-t="findBest"></span></button>
+    </section>
+
+    <!-- PLANS -->
+    <section class="screen" id="s-crop">
+      <span class="eyebrow" data-t="step2"></span>
+      <h1 data-t="plansH"></h1>
+      <p class="sub" data-t="plansSub"></p>
+      <div class="stack" id="plans"></div>
+      <p class="mock" style="margin-top:12px" data-t="mockPlans"></p>
+    </section>
+
+    <!-- FLOOD -->
+    <section class="screen" id="s-flood">
+      <span class="eyebrow" data-t="floodEy"></span>
+      <h1 data-t="floodH"></h1>
+      <p class="sub" data-t="floodSub"></p>
+      <div class="chips" id="fdist" style="margin-bottom:12px"></div>
+      <div class="stack" id="floodBody"></div>
+    </section>
+
+    <!-- SOURCES -->
+    <section class="screen" id="s-sources">
+      <span class="eyebrow" data-t="srcEy"></span>
+      <h1 data-t="srcH"></h1>
+      <p class="sub" data-t="srcSub"></p>
+      <div class="stack" id="srcList"></div>
+    </section>
+
+    <!-- TWIN -->
+    <section class="screen" id="s-twin">
+      <span class="eyebrow" id="twinEyebrow"></span>
+      <h1 data-t="twinH"></h1>
+      <p class="sub detail" data-t="twinSub"></p>
+      <div id="twinStatus"></div>
+      <div class="minimap" id="minimapBox"><div class="leaf" id="mini"></div><svg id="miniFallback" viewBox="0 0 360 130" style="position:absolute;inset:0;width:100%;height:100%"></svg><span class="lbl" id="miniLbl"></span></div>
+      <div class="topview zv" id="topview" hidden><canvas id="topc" aria-label="Real satellite photo of the plot with simulated crop"></canvas><div class="wchip" id="topchip"></div><div class="zvbtns"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button><button data-z="fit" aria-label="Show my plot">⌖</button></div><div class="zvscale"><i></i><span></span></div><div class="zvnote"></div></div>
+      <p class="sub" id="toplbl" style="margin:-4px 0 8px;font-size:11px"></p>
+      <p class="sub" id="simLbl" style="margin:0 0 6px;font-size:11px" hidden></p>
+      <div class="scene">
+        <svg id="scene" viewBox="0 0 360 240" role="img" aria-label="Animated field"></svg>
+        <div class="wchip" id="wchip"></div>
+        <div class="date" id="wdate"></div>
+      </div>
+      <div class="controls">
+        <button class="play" id="playBtn" aria-label="Play season"></button>
+        <input type="range" id="week" min="0" max="12" value="0" aria-label="Week">
+        <button class="iconbtn" id="narr" aria-pressed="false" title="Speak each week" aria-label="Speak each week"></button>
+      </div>
+      <div class="ticks" id="ticks"></div>
+      <div class="card say" id="sayCard">
+        <div class="big" id="sayIcon"></div>
+        <div><p id="sayText"></p><div class="sub detail" style="margin:4px 0 0;font-size:11px" id="sayNote"></div></div>
+      </div>
+      <div class="card late" id="lateCard" hidden></div>
+      <div class="needs" id="needs"></div>
+      <div class="card rfcard" id="rfTwin" hidden></div>
+      <h2 class="q" style="font-size:15px" data-t="yourYear"></h2>
+      <div class="year" id="yearTwin"></div>
+      <div class="stages detail" id="stages"></div>
+      <p class="mock" style="margin-top:12px" data-t="mockTwin"></p>
+    </section>
+
+    <!-- HELP -->
+    <section class="screen" id="s-help">
+      <span class="eyebrow" data-t="helpEy"></span>
+      <h1 data-t="helpH"></h1>
+      <p class="sub" data-t="helpSub"></p>
+      <div class="modes">
+        <button class="mode" id="mSimple" style="color:var(--leaf);border-color:var(--leaf)"></button>
+        <button class="mode" id="mPics" style="color:var(--gold);border-color:var(--gold)"></button>
+        <button class="mode" id="mVoice" style="color:var(--water);border-color:var(--water)"></button>
+      </div>
+      <div class="card" id="voiceSet" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px"><span style="font-weight:600;font-size:13px;flex:1;min-width:140px" id="vsLabel"></span><div class="seg" role="group" aria-label="Bangla voice"><button id="vPhone" aria-pressed="false"></button><button id="vRec" aria-pressed="true"></button></div></div>
+      <div class="card" id="planHead" style="margin-bottom:12px;padding:10px 12px"></div>
+      <div class="grid2" id="psteps"></div>
+      <div class="card" style="display:flex;align-items:center;gap:14px;margin-top:12px;border-color:rgba(242,193,78,.5);background:rgba(242,193,78,.1)">
+        <button class="play" id="playAll" style="flex-basis:60px;height:60px" aria-label="Play all steps"></button>
+        <div style="flex:1"><strong data-t="listen"></strong><div class="wave" id="wave"></div><div class="sub" style="margin:0;font-size:11px" id="voiceStatus"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <nav id="nav">
+    <button data-go="field"></button><button data-go="prev"></button><button data-go="crop"></button><button data-go="twin"></button><button data-go="flood"></button><button data-go="help"></button>
+  </nav>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="config.js"></script>
+<script>window.__BN_AUDIO=["loxwh4", "8otuqf", "1gsipz2", "16u980m", "11aenbh", "1wj6ubf", "1fykgy2", "1jbb1t1", "1hhfh4j", "dax0yp", "16cnetz", "10yj8lq", "w7ga44", "f1ryr1", "385aem", "zg0zci", "1qtwxe5", "7s7r3i", "1t1800z", "7tydm7", "4lvqf1", "lia9wq", "t1cxhc", "vfdo2t", "1nrv95t", "rzohfi", "138xuu5", "1v9g45", "1vew4j6", "nmd7a5", "18rwpza", "1bkz9hy", "12r7zc2", "3ipeb", "15id28m", "1wp8otg", "1sfs4sh", "fy8n2r", "1aqftfk", "14qixmk", "dx115u", "y5s32i", "1h0tq2k", "50odl1", "myr44b", "1xf38m8", "18d1761", "lpq9nd", "4z9kq4", "71bjct", "vhmt52", "qvrrpp", "xbgeam", "bm6l56", "z693rv", "64th7w", "tlm9r", "2sqrtu", "9ov8mu", "fi2pba", "plhvt", "kychk3", "1c30k4k", "385emj", "qlnbnd", "c9yuwt", "j1oea0", "1djp8fi", "1a7lkeg", "ujnyok", "1dze2vz", "1oagmoa", "lr4aq0", "1fzimve", "1x9ghq1", "a5ooeo", "cwj4wc", "1h5ztqk", "qvde0w", "10h6dr", "1c7r8l3", "1bf1rhp", "1a7tar7", "1a23ppy", "14pfmha", "2qdtk2", "of1x2w", "1cnw6ds", "1c78mo4", "32qduc", "drq1am", "1sl44jl", "11w4iu7", "183904n", "ctdwa", "496z00", "pnlueh", "83a58k", "155c3b1", "rfdnve", "1wft6b3", "hqs9y", "1viafa1", "1py04d5", "bi344x", "iqkvco", "4xmida", "f2qwqn"];</script>
+<script>
+(()=>{
+/* ---------- icons ---------- */
+const I={
+ pin:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Z" fill="currentColor" opacity=".25"/><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.6" fill="currentColor"/></svg>',
+ speaker:'<svg width="22" height="20" viewBox="0 0 24 20" fill="none"><path d="M1 7h5l6-5v16l-6-5H1Z" fill="currentColor"/><path d="M15 6.5c1.6 1.8 1.6 5.2 0 7M18 3.5c3.4 3.5 3.4 9.5 0 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+ play:'<svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8Z" fill="currentColor"/></svg>',
+ pause:'<svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg>',
+ home:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-25 12 12)"/></svg>',
+ field:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3Z"/><path d="M9 4v13M15 7v13"/></svg>',
+ crop:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22V9"/><path d="M12 13c-4 0-6-3-6-6 4 0 6 3 6 6ZM12 11c4 0 6-3 6-6-4 0-6 3-6 6Z"/></svg>',
+ now:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 21h16"/><path d="M8 21V11M8 13c-3 0-4-2-4-4 3 0 4 2 4 4ZM16 21V8M16 10c3 0 4-2 4-4-3 0-4 2-4 4Z"/></svg>',
+ flood:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 16c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 21c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/><path d="M12 3v8M9 8l3 3 3-3"/></svg>',
+ twin:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+ pics:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>',
+ rain:'<svg width="30" height="30" viewBox="0 0 32 32"><path d="M9 18a6 6 0 1 1 2-11.6A7 7 0 0 1 24 10a5 5 0 0 1 0 8Z" fill="#DDE8EE"/><path d="M11 22l-2 5M17 22l-2 5M23 22l-2 5" stroke="#4FC3F7" stroke-width="2.4" stroke-linecap="round"/></svg>',
+ sun:'<svg width="30" height="30" viewBox="0 0 32 32"><circle cx="16" cy="16" r="7" fill="#F7D23E"/><g stroke="#FFB547" stroke-width="2.4" stroke-linecap="round"><path d="M16 2v4M16 26v4M2 16h4M26 16h4M6 6l3 3M23 23l3 3M6 26l3-3M23 9l3-3"/></g></svg>',
+ cold:'<svg width="30" height="30" viewBox="0 0 32 32" stroke="#8FD8FA" stroke-width="2.4" stroke-linecap="round" fill="none"><path d="M16 3v26M5 9.5l22 13M5 22.5l22-13"/><path d="M12 5l4 3 4-3M12 27l4-3 4 3"/></svg>',
+ dry:'<svg width="30" height="30" viewBox="0 0 32 32"><circle cx="16" cy="9" r="5" fill="#F7D23E"/><rect x="3" y="17" width="26" height="11" rx="3" fill="#B98A5A"/><path d="M8 17l3 4-2 3M17 17l-2 5 3 3M25 17l-2 4" stroke="#3B2616" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>',
+ drop:'<svg width="30" height="30" viewBox="0 0 32 32"><path d="M16 3s10 11.5 10 17.5A10 10 0 0 1 6 20.5C6 14.5 16 3 16 3Z" fill="#4FC3F7"/></svg>',
+ flood:'<svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="#4FC3F7" stroke-width="2.4" stroke-linecap="round"><path d="M3 20c3 0 3-2 6-2s3 2 6 2 3-2 6-2 3 2 6 2M3 26c3 0 3-2 6-2s3 2 6 2 3-2 6-2 3 2 6 2"/><path d="M16 4v10M12 10l4 4 4-4"/></svg>',
+ ok:'<svg width="30" height="30" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="#7BD389" opacity=".25"/><path d="M9 16.5l5 5 9-10" stroke="#7BD389" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ seed:'<svg width="56" height="56" viewBox="0 0 60 60"><ellipse cx="30" cy="44" rx="15" ry="9" fill="#B98A5A"/><path d="M30 38c0-10 3-16 10-20" stroke="#7BD389" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="41" cy="20" rx="8" ry="4" transform="rotate(-30 41 20)" fill="#7BD389"/></svg>',
+ test:'<svg width="56" height="56" viewBox="0 0 60 60" fill="none"><path d="M24 10h12M26 10v14L16 44a4 4 0 0 0 3.6 6h20.8a4 4 0 0 0 3.6-6L34 24V10" stroke="#DDE8EE" stroke-width="3" stroke-linejoin="round"/><path d="M20 38h20l4 8H16Z" fill="#9BE3A6"/></svg>'
+};
+const bigIcon=(k)=>I[k].replace(/width="30" height="30"/,'width="56" height="56"');
+
+/* ---------- text ---------- */
+const T={
+ eyebrow:{en:'NASA SPACE APPS 2026 · FIELD SHIFT',bn:'নাসা স্পেস অ্যাপস ২০২৬ · ফিল্ড শিফট'},
+ startH:{en:'What to sow, and when?',bn:'কী বুনবেন, কখন বুনবেন?',s_en:'What to plant?',s_bn:'কী লাগাবেন?'},
+ startSub:{en:'NASA satellite and climate data for the area around your field, 24 seasons deep.',bn:'২৪ বছরের NASA উপগ্রহ ও জলবায়ু তথ্য, আপনার জমির আশেপাশের এলাকার জন্য।',s_en:'We use satellites to help you plant.',s_bn:'উপগ্রহ দিয়ে আমরা আপনাকে সাহায্য করি।'},
+ useLoc:{en:'Use my location (GPS)',bn:'আমার অবস্থান ব্যবহার করুন'},
+ orPick:{en:'Or pick your district',bn:'অথবা জেলা বেছে নিন'},
+ step1:{en:'Step 1 of 4',bn:'ধাপ ১ / ৪'},
+ stepPrev:{en:'Step 2 of 4 · about your farm',bn:'ধাপ ২ / ৪ · আপনার খামার'},
+ prevH:{en:"What's in your field now?",bn:'এখন জমিতে কী আছে?',s_en:'What is growing now?',s_bn:'এখন জমিতে কী আছে?'},
+ prevSub:{en:'The next crop can only go in after this one is cut. Tap a picture.',bn:'এই ফসল কাটার পরেই পরের ফসল বোনা যাবে। একটি ছবিতে চাপ দিন।',s_en:'Tap a picture.',s_bn:'একটি ছবিতে চাপ দিন।'},
+ harvQ:{en:'When will you cut it?',bn:'কবে কাটবেন?'},
+ floodQ:{en:'When was the water highest?',bn:'পানি কবে সবচেয়ে বেশি ছিল?'},
+ nextCrop:{en:'Next: choose the new crop',bn:'পরের ধাপ: নতুন ফসল বাছুন'},
+ yourYear:{en:'Your whole year',bn:'আপনার পুরো বছর'},
+ fieldH:{en:'Is this your field?',bn:'এটাই কি আপনার জমি?',s_en:'Your field?',s_bn:'আপনার জমি?'},
+ fieldSub:{en:'Drag and zoom the map, then tap your field to draw the gold outline.',bn:'সোনালি দাগটি আপনার জমিতে নিতে ম্যাপে চাপ দিন।',s_en:'Tap your field.',s_bn:'আপনার জমিতে চাপ দিন।'},
+ resNote:{en:'NASA data covers the area around your field, not the exact plot. Each source and its grid size is listed under Sources (i).',bn:'NASA-র তথ্য আপনার জমির আশেপাশের এলাকার, নির্দিষ্ট জমির নয়। প্রতিটি উৎস ও তার গ্রিডের মাপ "উৎস (i)"-তে দেওয়া আছে।'},
+ yesField:{en:'Yes, this is my field',bn:'হ্যাঁ, এটাই আমার জমি'},
+ step2:{en:'Step 3 of 4 · your rotation',bn:'ধাপ ৩ / ৪ · আপনার ফসলচক্র'},
+ cropH:{en:'Which crop?',bn:'কোন ফসল?'},
+ cropSub:{en:'Tap a picture. The chip shows how many of the last 24 seasons went badly.',bn:'একটি ছবিতে চাপ দিন। নিচের লেখা দেখায় গত ২৪ মৌসুমে কতবার খারাপ হয়েছে।',s_en:'Tap a picture.',s_bn:'একটি ছবিতে চাপ দিন।'},
+ mockBad:{en:'Counts over past seasons, not a forecast',bn:'অতীতের মৌসুমের হিসাব, পূর্বাভাস নয়'},
+ showTwin:{en:'Show my field twin',bn:'আমার জমির টুইন দেখুন'},
+ twinH:{en:'Your field, week by week',bn:'আপনার জমি, সপ্তাহে সপ্তাহে',s_en:'Watch your field',s_bn:'আপনার জমি দেখুন'},
+ twinSub:{en:'A past season like this one, replayed. An example, not a forecast.',bn:'এমন একটি অতীত মৌসুম আবার দেখানো হচ্ছে। এটি উদাহরণ, পূর্বাভাস নয়।'},
+ mockTwin:{en:'An example from a past year, not a forecast. Numbers come from the CropShift API.',bn:'অতীতের একটি উদাহরণ, পূর্বাভাস নয়। সংখ্যাগুলো CropShift API থেকে।'},
+ helpEy:{en:'Picture + voice help',bn:'ছবি + কণ্ঠ সাহায্য'},
+ helpH:{en:'Your plan in pictures',bn:'ছবিতে আপনার পরিকল্পনা',s_en:'Your plan',s_bn:'আপনার পরিকল্পনা'},
+ helpSub:{en:'Tap any picture to hear it. No reading needed.',bn:'যেকোনো ছবিতে চাপ দিলে শুনতে পাবেন। পড়তে হবে না।'},
+ listen:{en:'Listen to all steps',bn:'সব ধাপ শুনুন'},
+ nav:{en:['Field','Farm','Plans','Twin','Flood','Pictures'],bn:['জমি','খামার','পরিকল্পনা','টুইন','বন্যা','ছবি']},
+ waterQ:{en:'How much water can you give the crop?',bn:'ফসলে কতটা সেচ দিতে পারবেন?'},
+ prioQ:{en:'What matters most to you?',bn:'আপনার কাছে কোনটা বেশি জরুরি?'},
+ soilQ:{en:'Your soil',bn:'আপনার মাটি'},
+ rfH:{en:'Or choose a real field in Cumilla',bn:'অথবা কুমিল্লার একটি আসল জমি বাছুন'},
+ findBest:{en:'Find my best rotation',bn:'আমার সেরা ফসলচক্র খুঁজুন'},
+ plansH:{en:'Rotation plans for your field',bn:'আপনার জমির ফসলচক্র',s_en:'Best crop plans',s_bn:'সেরা ফসল পরিকল্পনা'},
+ plansSub:{en:'Crops you can sow next, ranked from every past season of NASA data for the area around your field. The ring shows in how many past seasons a checked risk hit.',bn:'পরের যে ফসল বোনা যায়, আপনার জমির আশেপাশের এলাকার অতীতের সব মৌসুমের NASA তথ্য দিয়ে সাজানো। বৃত্তে দেখায় কত মৌসুমে যাচাই করা ঝুঁকি দেখা গেছে।',s_en:'The top crop is first.',s_bn:'সবচেয়ে ভালো ফসল উপরে।'},
+ mockPlans:{en:'Counts over past seasons, not a forecast of this season. Only the risks named on each card were checked.',bn:'এগুলো অতীতের মৌসুমের হিসাব, এই মৌসুমের পূর্বাভাস নয়। প্রতিটি কার্ডে যে ঝুঁকির নাম আছে শুধু সেগুলোই যাচাই করা হয়েছে।'},
+ floodEy:{en:'Real NASA data',bn:'আসল NASA তথ্য'},
+ floodH:{en:'After the flood',bn:'বন্যার পর',s_en:'After the flood',s_bn:'বন্যার পর'},
+ floodSub:{en:'What NASA satellites saw in August 2024, and when the soil was ready again.',bn:'২০২৪ সালের আগস্টে NASA-র উপগ্রহ কী দেখেছে, আর মাটি কবে আবার তৈরি হয়েছে।'},
+ srcEy:{en:'Where every number comes from',bn:'প্রতিটি সংখ্যা কোথা থেকে'},
+ srcH:{en:'Data sources',bn:'তথ্যের উৎস'},
+ srcSub:{en:'Every number in CropShift links to one of these sources. This list comes from the server with each answer.',bn:'CropShift-এর প্রতিটি সংখ্যা এর কোনো একটি উৎসের সাথে যুক্ত। এই তালিকা প্রতিটি উত্তরের সাথে সার্ভার থেকে আসে।'},
+ soon:{en:'COMING SOON',bn:'শীঘ্রই আসছে'},
+ soonNote:{en:'Coming soon: water access, priorities and soil do not change the results yet.',bn:'শীঘ্রই আসছে: সেচের সুযোগ, পছন্দ ও মাটি এখনও ফলাফল বদলায় না।'},
+ waking:{en:'Waking up the server (up to 1 minute)…',bn:'সার্ভার চালু হচ্ছে (১ মিনিট পর্যন্ত লাগতে পারে)…'},
+ netDown:{en:'Cannot reach the server. Saved offline copies are shown where we have them.',bn:'সার্ভারে পৌঁছানো যাচ্ছে না। যেখানে আছে, সংরক্ষিত অফলাইন কপি দেখানো হচ্ছে।'},
+ retry:{en:'Retry',bn:'আবার চেষ্টা করুন'},
+ loading:{en:'Loading NASA data… The free server may take up to 1 minute to wake up.',bn:'NASA তথ্য আসছে… ফ্রি সার্ভার চালু হতে ১ মিনিট পর্যন্ত লাগতে পারে।'},
+ failH:{en:'Could not load this yet',bn:'এখনও লোড করা যায়নি'},
+ failSub:{en:'The server did not answer and there is no saved copy on this phone. Check the internet and try again.',bn:'সার্ভার উত্তর দেয়নি এবং এই ফোনে কোনো সংরক্ষিত কপি নেই। ইন্টারনেট দেখে আবার চেষ্টা করুন।'}
+};
+const MON={en:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],bn:['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে']};
+const bnNum=s=>String(s).replace(/\d/g,d=>'০১২৩৪৫৬৭৮৯'[d]);
+const DIST=[['cumilla','Cumilla','কুমিল্লা',23.4607,91.1809],['feni','Feni','ফেনী',23.0159,91.3976],['brahmanbaria','Brahmanbaria','ব্রাহ্মণবাড়িয়া',23.9571,91.1115],['noakhali','Noakhali','নোয়াখালী',22.8696,91.0995],['sylhet','Sylhet','সিলেট',24.8949,91.8687]];
+
+/* how each crop is DRAWN in the animation (looks only; every number comes from the API) */
+const VIS={
+ mustard:{tall:62,head:'mustard'},lentil:{tall:44,head:'lentil'},wheat:{tall:70,head:'wheat'},potato:{tall:40,head:'potato'},
+ boro_rice:{tall:66,head:'rice'},aman_rice:{tall:66,head:'rice'},boro:{tall:66,head:'rice'},maize:{tall:80,head:'maize'}
+};
+/* Real named fields. Location: Google Maps place pins for BARI RARS & BRRI Regional Station, Cumilla; plot picked on Esri World Imagery.
+   Soil/water/crops are the team's field record, NOT NASA data. Image px -> lat/lon via the export bbox (EPSG:4326, 800x736). */
+const RFIELDS=[
+ {id:'CUM-ARF-01',en:'BARI Agricultural Research Field',bn:'বারি কৃষি গবেষণা মাঠ',lat:23.47051,lon:91.15637,addr:'BARI Regional Agricultural Research Station, Shashongasa, Cumilla Adarsha Sadar',
+  type:{en:'Open research plot',bn:'খোলা গবেষণা প্লট'},soil:{en:'Alluvial silt loam',bn:'পলি দোআঁশ'},water:{en:'Deep tube-well system',bn:'গভীর নলকূপ'},wl:3,
+  crops:{en:'High-yield paddy, pulses, oilseeds',bn:'উচ্চ ফলনশীল ধান, ডাল, তেলবীজ'},prev:'aman',
+  img:'fields/CUM-ARF-01-hd.jpg',gx0:101093922,gy0:58102469,W:932,H:935,px:[[419.8,352.9],[582.9,352.9],[582.9,520.6],[419.8,520.6]]},
+ {id:'CUM-BRRI-02',en:'BRRI Paddy Cultivation Field',bn:'ব্রি ধান চাষের মাঠ',lat:23.46915,lon:91.15880,addr:'BRRI Regional Station, Dhaka–Comilla–Chittagong Bypass Rd, Cumilla',
+  type:{en:'Paddy field complex',bn:'ধান মাঠ কমপ্লেক্স'},soil:{en:'Clay loam',bn:'এঁটেল দোআঁশ'},water:{en:'Canal & irrigation pump',bn:'খাল ও সেচ পাম্প'},wl:2,
+  crops:{en:'Boro rice, Aman rice',bn:'বোরো ধান, আমন ধান'},prev:'aman',
+  img:'fields/CUM-BRRI-02-hd.jpg',gx0:101094813,gy0:58102904,W:933,H:935,px:[[429.2,479.8],[602.8,479.8],[602.8,627.2],[429.2,627.2]]}];
+/* images = Esri World Imagery tiles at zoom 19 (its sharpest level here, ≈0.27 m per pixel), stitched; gx0/gy0 = global Web-Mercator pixel of the top-left corner */
+const RZ=19,RWORLD=256*2**RZ,MPP=156543.034/2**RZ*Math.cos(23.47*Math.PI/180);
+const pxLL=(f,[x,y])=>[Math.atan(Math.sinh(Math.PI*(1-2*(f.gy0+y)/RWORLD)))*180/Math.PI,(f.gx0+x)/RWORLD*360-180];
+const RF=()=>RFIELDS.find(f=>f.id===S.rf)||null;
+const PREV={
+ aman:{en:'Aman rice',bn:'আমন ধান',icon:'rice',from:[15,6]},
+ aus:{en:'Aus rice',bn:'আউশ ধান',icon:'rice',from:[15,3]},
+ jute:{en:'Jute',bn:'পাট',icon:'jute',from:[1,3]},
+ veg:{en:'Vegetables',bn:'সবজি',icon:'potato',from:[1,7]},
+ fallow:{en:'Nothing / fallow',bn:'খালি জমি',icon:'fallow',from:null}
+};
+const HARV=[[0,'Already cut','কাটা হয়ে গেছে'],[1,'In about 1 week','প্রায় ১ সপ্তাহে'],[3,'In 2–4 weeks','২–৪ সপ্তাহে'],[5,'In 5 or more weeks','৫ সপ্তাহ বা পরে']];
+const DAY=864e5;const TODAY=(()=>{const d=new Date();d.setHours(12,0,0,0);return d})();
+const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const pd=s=>{const m=typeof s==='string'&&s.match(/^(\d{4})-(\d{2})-(\d{2})/);return m?new Date(+m[1],+m[2]-1,+m[3],12):null};
+const fmt=(d)=>L()==='bn'?`${bnNum(d.getDate())} ${MON.bn[d.getMonth()]}`:`${d.getDate()} ${MON.en[d.getMonth()]}`;
+const fdl=(s,l)=>{const d=pd(s);if(!d)return '—';return l==='bn'?`${bnNum(d.getDate())} ${MON.bn[d.getMonth()]} ${bnNum(d.getFullYear())}`:`${d.getDate()} ${MON.en[d.getMonth()]} ${d.getFullYear()}`};
+const fd=s=>fdl(s,L());
+/* user choices -> API parameters. The website only turns "in about 1 week" into a date; the API computes everything else. */
+const harvestISO=()=>iso(new Date(TODAY.getTime()+(S.prev==='fallow'?0:S.harvW)*7*DAY));
+const floodISO=()=>S.floodAgo==='ex'?'2024-08-21':iso(new Date(TODAY.getTime()-S.floodAgo*7*DAY));
+const WS_CLS={open:'ontime',late:'late',closed:'toolate'};
+function yearStrip(id){
+  const bn=L()==='bn',d=advData(),o=TWD&&TWD.o;
+  const anchor=(o&&o.sowing_date&&pd(o.sowing_date.date))||(d&&d.earliest_sowing_date&&pd(d.earliest_sowing_date.date))||TODAY;
+  const sy=anchor.getMonth()>=6?anchor.getFullYear():anchor.getFullYear()-1;
+  const start=new Date(sy,6,1).getTime(),span=365*DAY;const pct=t=>Math.max(0,Math.min(100,(t-start)/span*100));
+  const blk=(a,b,label,bg,cls='')=>`<div class="yblk ${cls}" style="left:${pct(a)}%;width:${Math.max(3,pct(b)-pct(a))}%;background:${bg}">${label}</div>`;
+  let h='';const P=PREV[S.prev];const from=P.from?new Date(P.from[1]>=6?sy:sy+1,P.from[1],P.from[0]).getTime():null;
+  if(S.flooded){const f=pd(floodISO()),r=d&&d.earliest_sowing_date&&pd(d.earliest_sowing_date.date);
+    if(from&&f&&f.getTime()>start)h+=blk(from,f.getTime(),P[L()],'#C9A36A');if(f&&r)h+=blk(f.getTime(),r.getTime(),bn?'বন্যা, মাটি ভেজা':'Flood, soil wet','#4FC3F7')}
+  else{const hv=d&&pd(d.prev_harvest);if(from&&hv)h+=blk(from,hv.getTime(),P[L()],'#C9A36A')}
+  let note='';
+  if(o){const a=o.sowing_date&&pd(o.sowing_date.date),b=o.maturity_date&&pd(o.maturity_date.date),ws=o.window_status||{};
+    const col={open:'#9BE3A6',late:'#FFD28A',closed:'#FF9A8C'}[ws.code]||'#9BE3A6';
+    if(a)h+=blk(a.getTime(),(b||a).getTime(),CN(o.crop),col);
+    note=`<b>${esc(tx(ws))}</b>${a&&!b?(bn?' পাকার তারিখ হিসাব হয়নি।':' Maturity date not computed.'):''}`}
+  h+=`<div style="position:absolute;left:${pct(TODAY.getTime())}%;top:0;bottom:0;width:2px;background:var(--water)"></div>`;
+  const mons=[6,7,8,9,10,11,0,1,2,3,4,5].map(m=>`<span>${(bn?MON.bn:MON.en)[m].slice(0,bn?4:3)}</span>`).join('');
+  $(id).innerHTML=`<div class="ybar">${h}</div><div class="ymon">${mons}</div>${note?`<div class="ynote">${note}</div>`:''}`;
+}
+/* ---------- names and colours (labels only) ---------- */
+const CNAME={aman:['Aman rice','আমন'],aman_rice:['Aman rice','আমন ধান'],mustard:['Mustard','সরিষা'],boro:['Boro rice','বোরো'],boro_rice:['Boro rice','বোরো ধান'],lentil:['Lentil','মসুর'],aus:['Aus rice','আউশ'],wheat:['Wheat','গম'],jute:['Jute','পাট'],mung:['Mung bean','মুগ'],fallow:['Nothing / fallow','খালি জমি'],veg:['Vegetables','সবজি'],potato:['Potato','আলু'],maize:['Maize','ভুট্টা'],flood:['Flood','বন্যা']};
+const CCOL={aman:'#C9A36A',aman_rice:'#C9A36A',mustard:'#F7D23E',boro:'#9BE3A6',boro_rice:'#9BE3A6',lentil:'#C9B8F2',aus:'#E8C15A',wheat:'#E8C15A',jute:'#7BD389',mung:'#8FD8A6',fallow:'#6B5A48',veg:'#7BD389',potato:'#D9B38C',maize:'#F2C14E',flood:'#4FC3F7'};
+const CN=k=>CNAME[k]?CNAME[k][L()==='bn'?1:0]:String(k);
+/* "coming soon" inputs: shown, but never sent to the API and never change results */
+const WATER=[{en:'Rain only',bn:'শুধু বৃষ্টি',d:0},{en:'1–2 irrigations',bn:'১–২ বার সেচ',d:1},{en:'Regular (pump/canal)',bn:'নিয়মিত (পাম্প/খাল)',d:2},{en:'Plenty (deep tube well)',bn:'প্রচুর (গভীর নলকূপ)',d:3}];
+const PRIO=[['water',{en:'Save water',bn:'পানি বাঁচানো'}],['soil',{en:'Healthier soil',bn:'মাটির স্বাস্থ্য'}],['risk',{en:'Lowest risk',bn:'সবচেয়ে কম ঝুঁকি'}],['more',{en:'More crops a year',bn:'বছরে বেশি ফসল'}]];
+const FLOOD_EVENT={sylhet:'2022-06-17'};const floodEventDate=k=>FLOOD_EVENT[k]||'2024-08-21';
+
+/* ---------- API: the only place the website gets numbers from ---------- */
+const API_BASE=String(window.API_BASE||'mock').trim();
+const MOCK=API_BASE==='mock';
+const MOCKFILE={'/api/v1/districts':'districts','/api/v1/advisory':'advisory','/api/v1/post-flood':'post_flood','/api/v1/field-twin':'field_twin'};
+const apiRoot=()=>API_BASE.replace(/\/+$/,'');
+function apiUrl(path,params){if(MOCK)return `../mock/${MOCKFILE[path]}.json`;
+  const q=new URLSearchParams();Object.entries(params||{}).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=='')q.set(k,v)});const s=q.toString();return apiRoot()+path+(s?'?'+s:'')}
+const imgUrl=p=>MOCK?'':apiRoot()+p;
+const NET={pending:0,slow:false,down:false};
+const MEM=new Map(),DONE=new Map(),PROV={};
+function addProv(env){((env&&env.provenance)||[]).forEach(p=>{if(p&&p.id)PROV[p.id]=p})}
+async function fetchEnv(url){
+  const key='cs-api:'+url;NET.pending++;const slowT=setTimeout(()=>{NET.slow=true;netBanner()},2500);
+  const t0=Date.now();let limit=70000;try{if(localStorage.getItem(key))limit=20000}catch(e){}
+  try{/* a sleeping free server can answer 502 or nothing while it wakes: keep trying for ~75 s */
+    for(;;){const left=limit+5000-(Date.now()-t0);let r=null,j=null;
+      try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),Math.max(5000,left));
+        try{r=await fetch(url,{signal:ctl.signal,cache:'no-store'})}finally{clearTimeout(to)}
+        try{j=await r.json()}catch(e){}}catch(e){}
+      if(j&&typeof j==='object'&&Array.isArray(j.errors)){
+        if(r.ok&&!j.errors.length){try{localStorage.setItem(key,JSON.stringify({t:Date.now(),j}))}catch(e){}}
+        NET.down=false;return {env:j,offline:false}}
+      if(Date.now()-t0>limit||navigator.onLine===false)throw new Error('no answer');
+      await new Promise(res=>setTimeout(res,4000))}
+  }catch(err){NET.down=true;let c=null;try{c=JSON.parse(localStorage.getItem(key)||'null')}catch(e){}
+    return c&&c.j?{env:c.j,offline:true,savedAt:c.t}:{env:null,failed:true};
+  }finally{clearTimeout(slowT);NET.pending--;if(!NET.pending)NET.slow=false;netBanner()}}
+function load(path,params){const url=apiUrl(path,params);if(DONE.has(url))return Promise.resolve(DONE.get(url));
+  let p=MEM.get(url);if(!p){p=fetchEnv(url).then(res=>{MEM.delete(url);if(res.env){addProv(res.env);DONE.set(url,res)}return res});MEM.set(url,p)}return p}
+function retryAll(){MEM.clear();[...DONE.keys()].forEach(k=>{if(DONE.get(k).offline)DONE.delete(k)});NET.down=false;netBanner();render()}
+function netBanner(){const b=document.getElementById('netbar');if(!b)return;
+  if(NET.pending&&NET.slow){b.hidden=false;b.innerHTML=`<span class="spin"></span><span style="flex:1">${tr(T.waking)}</span>`;return}
+  if(NET.down){b.hidden=false;b.innerHTML=`<span style="flex:1">${tr(T.netDown)}</span><button class="srcbtn" id="netRetry">${tr(T.retry)}</button>`;document.getElementById('netRetry').onclick=retryAll;return}
+  b.hidden=true;b.innerHTML=''}
+/* where to ask about: a GPS point or real field -> lat/lon (the backend picks the district); a district chip -> district */
+const locP=()=>{if(S.rf||S.gps){const ll=S.fieldLL||{lat:S.lat,lng:S.lon};return {lat:ll.lat.toFixed(5),lon:ll.lng.toFixed(5)}}return {district:S.district}};
+const getPF=()=>load('/api/v1/post-flood',{...locP(),flood_date:floodISO()});
+const advOK=r=>r&&r.env&&!(r.env.errors||[]).length;
+async function getAdv(){let res,pf=null;
+  if(S.flooded){pf=await getPF();const ready=advOK(pf)&&pf.env.data&&pf.env.data.earliest_sowing_date?pf.env.data.earliest_sowing_date.date:null;
+    res=await load('/api/v1/advisory',{...locP(),prev_harvest:floodISO(),flood_ready:ready})}
+  else res=await load('/api/v1/advisory',{...locP(),prev_harvest:harvestISO()});
+  S.adv=res;return {...res,pf}}
+const advData=()=>advOK(S.adv)?S.adv.env.data:null;
+function curOpt(d){if(!d)return null;const all=[...(d.options||[]),...(d.filtered_out||[])];return all.find(o=>o.crop===S.optCrop)||all[0]||null}
+
+/* ---------- shared render helpers (render JSON only, never compute) ---------- */
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tx=o=>o==null?'':typeof o==='string'?o:String(o[L()]??o.en??'');
+function unitTxt(u){u=String(u||'');if(L()!=='bn')return u;const m=u.match(/^of (\d+) years$/);if(m)return `/ ${bnNum(m[1])} বছর`;
+  return ({mm:'মিমি',days:'দিন',years:'বছর','km²':'বর্গকিমি',scenes:'টি দৃশ্য',waterings:'বার সেচ','% of the observed area':'% (দেখা এলাকার)','km to the district point':'কিমি (জেলা-বিন্দু থেকে)'})[u]||u}
+const numv=v=>v==null?'—':num(v);
+function mvT(m){if(m==null||typeof m!=='object')return esc(numv(m));return m.value==null?`<i>${L()==='bn'?'হিসাব হয়নি':'not computed'}</i>`:`${num(m.value)} ${esc(unitTxt(m.unit))}`}
+const srcBtn=ids=>{ids=[...new Set([].concat(ids||[]).filter(Boolean))];return ids.length?`<button class="srcbtn" data-src="${esc(ids.join(','))}">${L()==='bn'?'উৎস':'Source'} ›</button>`:''};
+const mv=m=>mvT(m)+(m&&m.src?' '+srcBtn(m.src):'');
+function allSrc(o,out=[]){if(Array.isArray(o))o.forEach(v=>allSrc(v,out));else if(o&&typeof o==='object')Object.entries(o).forEach(([k,v])=>{if(k==='src'&&Array.isArray(v))out.push(...v);else allSrc(v,out)});return [...new Set(out)]}
+const loadingHTML=()=>`<div class="card" style="display:flex;gap:10px;align-items:center"><span class="spin"></span><span class="sub" style="margin:0">${tr(T.loading)}</span></div>`;
+const failHTML=()=>`<div class="card err"><strong>${tr(T.failH)}</strong><div class="sub" style="margin:4px 0 8px">${tr(T.failSub)}</div><button class="btn gold" data-retry>${tr(T.retry)}</button></div>`;
+function envHead(res){const e=res&&res.env;if(!e)return'';const bn=L()==='bn';
+  const ML={live:['LIVE','সরাসরি'],cache:['CACHE · saved NASA archive','ক্যাশ · সংরক্ষিত NASA আর্কাইভ'],fixture:['FIXTURE · demo copy','ফিক্সচার · ডেমো কপি']}[e.source_mode]||[String(e.source_mode||'?'),String(e.source_mode||'?')];
+  let h=`<div class="badges"><span class="pill mode">${bn?'তথ্য':'DATA'}: ${esc(bn?ML[1]:ML[0])}</span>`;
+  if(e.is_mock)h+=`<span class="pill sample">${bn?'মক ডেটা':'MOCK DATA'}</span>`;
+  if(res.offline)h+=`<span class="pill sample">${bn?'অফলাইন কপি':'OFFLINE COPY'}${res.savedAt?' · '+esc(fdl(iso(new Date(res.savedAt)),L())):''}</span>`;
+  h+='</div>';const loc=e.data&&e.data.location;
+  if(loc)h+=`<div class="sub" style="margin:0 0 8px;font-size:11px">${bn?'আপনার অবস্থানের জেলা':'District for your location'}: <b style="color:var(--ink)">${esc(tx(loc.district_name))}</b> · ${mv(loc.distance_km)}<br>${esc(tx(loc.method))}</div>`;
+  return h}
+const noticesHTML=e=>{const n=(e&&e.notices)||[];return n.length?`<div class="stack" style="gap:6px;margin-top:10px">${n.map(x=>`<div class="note ${x.level==='caution'?'caution':''}">${esc(tx(x))}</div>`).join('')}</div>`:''};
+const errorsHTML=e=>((e&&e.errors)||[]).map(x=>`<div class="card err"><strong>${esc(tx(x))}</strong><div class="sub" style="margin:2px 0 0;font-size:10px">${esc(x.code||'')}</div></div>`).join('');
+function narrHTML(e){const n=e&&e.narration;if(!n)return'';const bn=L()==='bn';return `<div class="card say-sum"><div class="sub" style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:.06em">${bn?'সংক্ষেপে':'IN SHORT'}${n.provenance_check==='passed'?(bn?' · প্রতিটি সংখ্যা উৎসের সাথে মেলানো ✓':' · every number checked against its source ✓'):''}</div>${esc(tx(n))}</div>`}
+function paint(box,getter,draw){const tok=box._tok=(box._tok||0)+1;box.innerHTML=loadingHTML();
+  Promise.resolve().then(getter).then(res=>{if(box._tok!==tok)return;try{if(!res||res.failed||!res.env)box.innerHTML=failHTML();else draw(res)}catch(err){console.error(err);box.innerHTML=failHTML()}
+    bindSrc(box);box.querySelectorAll('[data-retry]').forEach(b=>b.onclick=retryAll)})}
+const STAGE={en:['Sowing','Growing','Flowering','Seeds filling','Harvest'],bn:['বপন','বৃদ্ধি','ফুল আসা','দানা ভরা','ফসল কাটা'],
+ s_en:['Plant the seeds now','The plants are growing','Flowers are coming','The seeds are filling','Time to cut the crop'],
+ s_bn:['এখন বীজ বুনুন','গাছ বড় হচ্ছে','ফুল আসছে','দানা ভরছে','এখন ফসল কাটুন']};
+const EV={
+ flood:{icon:'flood',en:'Water stood in the field this week. Sowing too early can rot the seeds.',bn:'এই সপ্তাহে জমিতে পানি জমে ছিল। খুব আগে বুনলে বীজ পচে যেতে পারে।',s_en:'Water in the field. Wait a little.',s_bn:'জমিতে পানি। একটু অপেক্ষা করুন।'},
+ rain:{icon:'rain',en:'Rain came this week in a season like this. Keep the drains open.',bn:'এমন মৌসুমে এই সপ্তাহে বৃষ্টি হয়েছিল। নালা খোলা রাখুন।',s_en:'Rain. Open the drains.',s_bn:'বৃষ্টি। নালা খুলে দিন।'},
+ hot:{icon:'sun',en:"The hottest day was above this crop's heat limit. Water in the evening and harvest on time.",bn:'সবচেয়ে গরম দিন এই ফসলের তাপ-সীমার উপরে ছিল। বিকেলে সেচ দিন, সময়মতো কাটুন।',s_en:'Very hot. Give water in the evening.',s_bn:'খুব গরম। বিকেলে পানি দিন।'},
+ nighthot:{icon:'sun',en:"Nights were warmer than this crop's limit this week.",bn:'এই সপ্তাহে রাত এই ফসলের সীমার চেয়ে গরম ছিল।',s_en:'Warm nights.',s_bn:'রাত গরম।'},
+ cold:{icon:'cold',en:'Cold, foggy nights. Check young plants and leaves every morning.',bn:'ঠান্ডা, কুয়াশার রাত। প্রতিদিন সকালে গাছ ও পাতা দেখুন।',s_en:'Cold nights. Check the plants.',s_bn:'ঠান্ডা রাত। গাছ দেখে রাখুন।'},
+ dry:{icon:'dry',en:'Without irrigation the soil was too dry for the crop this week.',bn:'সেচ ছাড়া এই সপ্তাহে মাটি ফসলের জন্য খুব শুকনো ছিল।',s_en:'Dry soil. The crop needs water.',s_bn:'মাটি শুকনো। ফসলে পানি দরকার।'},
+ irr:{icon:'drop',en:'The soil was drying: an irrigation was needed this week.',bn:'মাটি শুকিয়ে যাচ্ছিল: এই সপ্তাহে সেচ লেগেছিল।',s_en:'Dry soil. Give water once.',s_bn:'মাটি শুকনো। একবার পানি দিন।'},
+ ok:{icon:'ok',en:'Nothing to worry about this week.',bn:'এই সপ্তাহে চিন্তার কিছু নেই।',s_en:'All good this week.',s_bn:'এই সপ্তাহ ভালো।'}
+};
+
+/* ---------- state ---------- */
+const S={flooded:false,floodAgo:'ex',waterLvl:1,prio:new Set(['risk','soil']),optCrop:null,adv:null,floodEnv:null,twinYear:2024,fdist:'feni',map:null,mini:null,fieldLL:null,live:false,prev:'aman',harvW:1,narrate:false,bnVoice:'rec',lang:'en',simple:false,pics:false,screen:'start',district:'cumilla',gps:false,lat:23.4607,lon:91.1809,week:0,playing:false,field:{x:180,y:190},rf:null};
+let TWD=null;/* {adv, o: the chosen option, tw: the /field-twin answer} */
+try{const s=JSON.parse(localStorage.getItem('cs-proto')||'{}');if(s.lang)S.lang=s.lang;if(typeof s.simple==='boolean')S.simple=s.simple;}catch(e){}
+const save=()=>{try{localStorage.setItem('cs-proto',JSON.stringify({lang:S.lang,simple:S.simple}))}catch(e){}};
+const LF=window.L;const L=()=>S.lang;
+const tr=(o)=>{if(!o)return'';const k=S.simple&&o['s_'+L()]?'s_'+L():L();return o[k]??o.en};
+const num=(n)=>L()==='bn'?bnNum(n):String(n);
+const $=id=>document.getElementById(id);
+
+/* ---------- voice ---------- */
+let voices=[];const loadV=()=>{try{voices=speechSynthesis.getVoices()}catch(e){voices=[]}};
+if('speechSynthesis' in window){loadV();speechSynthesis.onvoiceschanged=loadV;}
+const bnVoice=()=>voices.find(v=>/^bn/i.test(v.lang));
+const hash=t=>{let h=5381;for(const ch of t)h=((h*33)^ch.codePointAt(0))>>>0;return h.toString(36)};
+const BN_AUDIO=new Set(window.__BN_AUDIO||[]);
+let curAudio=null,seqId=0;
+function stopSpeak(){seqId++;try{speechSynthesis.cancel()}catch(e){}if(curAudio){curAudio.pause();curAudio=null}$('speak').classList.remove('on')}
+function speak(texts,onend){
+  if(!Array.isArray(texts))texts=[texts];texts=texts.filter(Boolean);
+  stopSpeak();const my=++seqId;$('speak').classList.add('on');let missed=false;
+  const finish=()=>{if(my!==seqId)return;$('speak').classList.remove('on');
+    if(missed)toast(L()==='bn'?'এই ফোনে বাংলা কণ্ঠ নেই। রেকর্ড করা অংশ বাজানো হয়েছে; সার্ভার থেকে আসা লেখা পড়া যায়নি।':'This phone has no Bangla voice installed. Recorded clips played; text from the server could not be read aloud.');onend&&onend()};
+  const bn=L()==='bn';const usePhone=bn&&S.bnVoice==='phone'&&bnVoice();
+  let i=0;
+  const next=()=>{if(my!==seqId)return;if(i>=texts.length){finish();return}const t=texts[i++];
+    if(bn&&!usePhone){const h=hash(t);if(BN_AUDIO.has(h)){
+      curAudio=new Audio('bn/'+h+'.mp3');curAudio.playbackRate=S.simple?0.9:1;curAudio.onended=next;curAudio.onerror=next;
+      curAudio.play().catch(()=>{toast('Tap the speaker again to allow sound.');finish()});return}
+      /* not a recorded clip (text from the API): use the phone's Bangla voice if it has one */
+      if(!bnVoice()){missed=true;next();return}}
+    if(!('speechSynthesis' in window)){next();return}
+    const u=new SpeechSynthesisUtterance(t);
+    if(bn){const v=bnVoice();u.voice=v;u.lang=v.lang}else{const v=voices.find(v=>/^en/i.test(v.lang));if(v)u.voice=v;u.lang='en-US'}
+    u.rate=S.simple?0.85:0.95;u.onend=next;u.onerror=next;speechSynthesis.speak(u)};
+  next();
+}
+let toastT;function toast(msg){let t=document.querySelector('.toast');if(!t){t=document.createElement('div');t.className='toast';t.setAttribute('role','status');document.body.appendChild(t)}t.textContent=msg;clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),5200)}
+
+/* ---------- map ---------- */
+function drawMap(){
+  const rf=RF();$('mapsvg').setAttribute('viewBox','0 0 360 380');$('mapsvg').setAttribute('preserveAspectRatio','xMidYMid meet');
+  $('fieldzv').hidden=!rf;$('layers').style.display=rf?'none':'';if(rf){$('mapsvg').innerHTML='';ZVF.fit();return}
+  const g=['#2E5E3A','#3F7A45','#8FA83A','#4A6B2F','#356B40','#5E8C3E','#2C5233'];
+  let s='<g transform="rotate(-8 180 190)">';
+  for(let r=-1;r<9;r++)for(let c=-1;c<8;c++){s+=`<rect x="${c*52+(r%2)*12}" y="${r*46}" width="48" height="42" rx="3" fill="${g[(Math.abs(r*3+c*5))%g.length]}" opacity=".92"/>`}
+  s+='</g><path d="M-10 290 C 90 330 150 240 240 300 S 330 340 380 320" stroke="#3FA7D6" stroke-width="16" fill="none" stroke-linecap="round" opacity=".85"/>';
+  s+='<path d="M-10 130 L 380 205" stroke="#E9E3C9" stroke-width="3" stroke-dasharray="10 6" opacity=".5"/>';
+  s+='<rect width="360" height="380" fill="url(#vg)"/><defs><linearGradient id="vg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#06101B" stop-opacity=".55"/><stop offset=".3" stop-color="#06101B" stop-opacity="0"/><stop offset=".85" stop-color="#06101B" stop-opacity="0"/><stop offset="1" stop-color="#06101B" stop-opacity=".6"/></linearGradient></defs>';
+  s+='<circle cx="180" cy="190" r="70" fill="#4FC3F7" fill-opacity=".1" stroke="#4FC3F7" stroke-opacity=".45"/>';
+  s+='<g id="fieldG"></g>';
+  s+='<circle class="gpulse" cx="180" cy="190" r="10" fill="none" stroke="#4FC3F7" stroke-width="2"/><circle cx="180" cy="190" r="8" fill="#4FC3F7" stroke="#fff" stroke-width="3"/>';
+  $('mapsvg').innerHTML=s;placeField();$('coords').textContent=(L()==='bn'?'GPS চালু · ':'GPS on · ')+num(S.lat.toFixed(2))+'° N, '+num(S.lon.toFixed(2))+'° E';
+}
+function placeField(){
+  const {x,y}=S.field;
+  const p=`M${x-48} ${y-26} L${x+44} ${y-36} L${x+52} ${y+26} L${x-40} ${y+36} Z`;
+  const lbl=L()==='bn'?'আপনার জমি':'Your field';
+  $('fieldG').innerHTML=`<path class="outline" d="${p}" fill="#F2C14E" fill-opacity=".2" stroke="#F2C14E" stroke-width="3" stroke-linejoin="round"/><g transform="translate(${x-40},${y-66})"><rect width="${lbl.length*7.4+24}" height="24" rx="12" fill="#F2C14E"/><text x="12" y="16" font-size="12" font-weight="700" fill="#10202A" font-family="Inter, Noto Sans Bengali, sans-serif">${lbl}</text></g>`;
+}
+$('mapsvg').addEventListener('click',e=>{if(RF())return;setTimeout(()=>{setAreaText()},0);const r=$('mapsvg').getBoundingClientRect();S.field={x:Math.max(60,Math.min(300,(e.clientX-r.left)/r.width*360)),y:Math.max(80,Math.min(330,(e.clientY-r.top)/r.height*380))};placeField();});
+
+/* ---------- plants / scene ---------- */
+function headSVG(kind){
+  switch(kind){
+   case 'mustard':return '<g fill="#F7D23E"><circle cx="-5" cy="-3" r="3.4"/><circle cx="0" cy="-7" r="3.4"/><circle cx="5" cy="-3" r="3.4"/><circle cx="0" cy="0" r="3.2"/></g>';
+   case 'lentil':return '<g><circle cx="-4" cy="-4" r="2.6" fill="#E9E3FF"/><circle cx="4" cy="-6" r="2.6" fill="#C9B8F2"/><ellipse cx="0" cy="2" rx="5" ry="2.4" fill="#C9A36A"/></g>';
+   case 'wheat':return '<g fill="#E8C15A">'+[0,1,2,3].map(i=>`<ellipse cx="-3" cy="${-i*5}" rx="2.6" ry="4" transform="rotate(25 -3 ${-i*5})"/><ellipse cx="3" cy="${-i*5}" rx="2.6" ry="4" transform="rotate(-25 3 ${-i*5})"/>`).join('')+'</g>';
+   case 'potato':return '<g><circle cx="-5" cy="-2" r="2.6" fill="#F4F1E6"/><circle cx="4" cy="-4" r="2.6" fill="#F4F1E6"/><circle cx="0" cy="0" r="1.6" fill="#F7D23E"/></g>';
+   case 'rice':return '<path d="M0 0 C 6 -6 10 -2 14 4" stroke="#E8C15A" stroke-width="3" fill="none" stroke-linecap="round"/>';
+   case 'maize':return '<g><rect x="3" y="18" width="7" height="16" rx="3.5" fill="#F2C14E"/><path d="M0 0 l-4 -8 M0 0 l0 -9 M0 0 l4 -8" stroke="#E8C15A" stroke-width="2" stroke-linecap="round"/></g>';
+  }return'';
+}
+function buildScene(){
+  const c=vis();const n=c.head==='potato'?7:9;const xs=[...Array(n)].map((_,i)=>24+i*(312/(n-1)));
+  let s=`<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#123A57"/><stop offset=".72" stop-color="#2E6A6E"/><stop offset="1" stop-color="#6E8F58"/></linearGradient><linearGradient id="soilg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6B4A2B"/><stop offset="1" stop-color="#3B2616"/></linearGradient></defs>
+  <rect width="360" height="240" fill="url(#sky)"/>
+  <g class="fog" id="fog" opacity="0"><rect y="100" width="360" height="80" fill="#DDE8EE" opacity=".22"/><rect y="130" width="360" height="40" fill="#DDE8EE" opacity=".18"/></g>
+  <circle class="glow" id="glow" cx="302" cy="42" r="34" fill="#FFB547" opacity="0"/>
+  <circle cx="302" cy="42" r="20" fill="#F7D23E" id="sunC"/>
+  <g id="cloud" opacity=".0"><ellipse cx="70" cy="46" rx="22" ry="14" fill="#DDE8EE"/><ellipse cx="94" cy="38" rx="24" ry="20" fill="#DDE8EE"/><ellipse cx="120" cy="48" rx="20" ry="14" fill="#DDE8EE"/></g>
+  <g class="rain" id="rain" opacity="0">${[...Array(10)].map((_,i)=>`<line x1="${56+i*8}" y1="${62+(i%3)*8}" x2="${53+i*8}" y2="${72+(i%3)*8}" style="animation-delay:${(i%5)*0.13}s"/>`).join('')}</g>
+  <rect y="176" width="360" height="64" fill="url(#soilg)"/>
+  ${[190,206,222].map(y=>`<rect y="${y}" width="360" height="3" fill="#2A1A0E" opacity=".5"/>`).join('')}
+  <rect class="waterl" id="water" y="168" width="360" height="14" fill="#4FC3F7" opacity="0"/>
+  <g id="plants">${xs.map((x,i)=>{const h=c.tall*(0.88+((i*7)%5)/20);const blades=c.head==='rice'||c.head==='maize';
+    return `<g transform="translate(${x.toFixed(1)},178)"><g class="grow" style="transform:scaleY(.05)">
+      <path class="stem" d="M0 0 C -2 ${-h*.35} 2 ${-h*.7} 0 ${-h}" stroke="#7BD389" stroke-width="${blades?3.5:3}" fill="none" stroke-linecap="round"/>
+      ${blades?`<path class="stem" d="M0 0 C -6 ${-h*.4} -12 ${-h*.6} -16 ${-h*.72}" stroke="#7BD389" stroke-width="2.5" fill="none"/><path class="stem" d="M0 0 C 6 ${-h*.4} 12 ${-h*.55} 17 ${-h*.62}" stroke="#7BD389" stroke-width="2.5" fill="none"/>`:
+      `<ellipse class="lf" cx="-7" cy="${-h*.32}" rx="8" ry="3.4" fill="#6FBF5B" transform="rotate(-25 -7 ${-h*.32})"/><ellipse class="lf" cx="7" cy="${-h*.52}" rx="8" ry="3.4" fill="#6FBF5B" transform="rotate(25 7 ${-h*.52})"/>${c.head==='potato'?`<ellipse class="lf" cx="-8" cy="${-h*.75}" rx="9" ry="4" fill="#6FBF5B" transform="rotate(-20 -8 ${-h*.75})"/><ellipse class="lf" cx="8" cy="${-h*.8}" rx="9" ry="4" fill="#6FBF5B" transform="rotate(20 8 ${-h*.8})"/>`:''}`}
+      <g class="head" transform="translate(0 ${c.head==='maize'?-h*.55- -0:-h})" style="opacity:0">${c.head==='maize'?`<g transform="translate(0 ${-h*.45})">${headSVG('maize')}</g>`:headSVG(c.head)}</g>
+    </g></g>`}).join('')}</g>`;
+  $('scene').innerHTML=s;
+}
+/* ---------- field twin: one past year replayed, from /api/v1/field-twin ---------- */
+const twData=()=>{const e=TWD&&TWD.tw&&TWD.tw.env;return e&&!(e.errors||[]).length?e.data:null};
+const twRows=()=>{const d=twData();return (d&&d.weekly&&d.weekly.rows)||[]};
+function vis(){const k=(TWD&&TWD.o&&TWD.o.crop)||S.optCrop||'mustard';return VIS[k]||VIS.mustard}
+const nWeeks=()=>Math.max(1,twRows().length||12);
+/* API growth stage (FAO-56: initial, development, mid, late) -> which picture to draw */
+function vStage(w){const R=twRows(),n=R.length;if(!n||w===0)return 0;if(w>=n-1)return 4;const st=R[w].stage;
+  if(st==='initial'||st==='development')return 1;if(st==='mid'){const m=R.map((r,i)=>r.stage==='mid'?i:-1).filter(i=>i>=0);return w<m[Math.floor(m.length/2)]?2:3}return 3}
+const EVMAP={heat:'hot',night_heat:'nighthot',cold:'cold',rain:'rain',dry:'dry',irrigation:'irr',ok:'ok'};
+function vEvent(w){const r=twRows()[w];return r?(EVMAP[(r.events||[])[0]]||'ok'):'ok'}
+function growth(w){const n=nWeeks();let f=0;for(let i=0;i<n;i++){if(vStage(i)>=3){f=i;break}}return Math.min(1,0.06+(w/Math.max(1,f||n-1))*0.94)}
+const isRipe=w=>{const st=vStage(w);return st>=4||(st===3&&w>=nWeeks()-2)};
+function weekLine(r){if(!r)return'';const bn=L()==='bn',u=(e,b)=>bn?b:e;
+  return [`${u('Rain','বৃষ্টি')} ${numv(r.rain_mm)} ${u('mm','মিমি')}`,r.tmax_highest_c!=null?`${u('hottest day','সবচেয়ে গরম দিন')} ${numv(r.tmax_highest_c)} °C`:null,r.tmin_mean_c!=null?`${u('nights','রাত')} ${numv(r.tmin_mean_c)} °C`:null,
+    r.soil_water_pct!=null?`${u('soil water without irrigation','সেচ ছাড়া মাটির পানি')} ${numv(r.soil_water_pct)}%`:null,r.irrigation_mm?`${u('irrigation','সেচ')} ${numv(r.irrigation_mm)} ${u('mm','মিমি')}`:null].filter(Boolean).join(' · ')}
+function renderWeek(){
+  const w=S.week,st=vStage(w),ev=vEvent(w),r=twRows()[w],g=growth(w),ripe=isRipe(w);
+  document.querySelectorAll('#plants .grow').forEach((p,i)=>{p.style.transform=`scaleY(${Math.max(.05,g-(i%3)*0.03).toFixed(3)})`});
+  document.querySelectorAll('#plants .head').forEach(h=>{h.style.opacity=st>=2?1:0});
+  document.querySelectorAll('#plants .stem').forEach(s=>s.setAttribute('stroke',ripe?'#C9A36A':'#7BD389'));
+  document.querySelectorAll('#plants .lf').forEach(s=>s.setAttribute('fill',ripe?'#B8A15A':'#6FBF5B'));
+  $('rain').style.opacity=ev==='rain'?1:0;$('cloud').style.opacity=(ev==='rain'||ev==='cold')?1:0;
+  $('water').style.opacity=0;$('glow').style.opacity=(ev==='hot'||ev==='nighthot')?.55:0;$('fog').style.opacity=ev==='cold'?1:0;
+  $('sunC').setAttribute('fill',ev==='hot'?'#FFB547':'#F7D23E');
+  const sn=S.simple?STAGE['s_'+L()][st]:STAGE[L()][st];
+  $('wchip').textContent=`${L()==='bn'?`সপ্তাহ ${bnNum(w+1)}`:`Week ${w+1}`} · ${sn}`;$('wchip').classList.toggle('warn',ev!=='ok'&&ev!=='irr');
+  $('wdate').textContent=r?fd(r.week_start):'';
+  const e=EV[ev];$('sayIcon').innerHTML=I[e.icon];$('sayText').textContent=tr(e);
+  const d=twData();$('sayNote').innerHTML=r?`${esc(weekLine(r))} ${srcBtn(d.weekly.src)}`:'';bindSrc($('sayNote'));
+  $('week').value=w;drawTop();
+  const R=twRows();document.querySelectorAll('.stage').forEach(el=>{const ws=R.map((_,k)=>k).filter(k=>vStage(k)===+el.dataset.vs);el.classList.toggle('now',ws.includes(w));el.classList.toggle('done',ws.length>0&&w>ws[ws.length-1])});
+}
+async function getTwin(){const adv=await getAdv();const o=curOpt(advData());if(!o)return {adv,o:null,tw:null};
+  const md=(o.sowing_date&&o.sowing_date.date)||(o.sowing_window&&o.sowing_window.start)||'';const mmdd=md.slice(5),Y=S.twinYear;
+  const tw=mmdd?await load('/api/v1/field-twin',{...locP(),year:Y,crop:o.crop,sow_date:`${+mmdd.slice(0,2)>=7?Y:Y+1}-${mmdd}`}):null;
+  return {adv,o,tw}}
+function renderTwin(){const box=$('twinStatus');const tok=box._tok=(box._tok||0)+1;
+  if(!TWD){buildScene();$('week').max=nWeeks()-1;renderWeek()}
+  box.innerHTML=loadingHTML();
+  getTwin().then(r=>{if(box._tok!==tok)return;TWD=r;drawTwin()}).catch(err=>{console.error(err);box.innerHTML=failHTML();box.querySelectorAll('[data-retry]').forEach(b=>b.onclick=retryAll)})}
+function drawTwin(){const bn=L()==='bn',box=$('twinStatus'),{adv,o,tw}=TWD;let h='';
+  if(!adv||adv.failed||!adv.env)h=failHTML();
+  else if((adv.env.errors||[]).length)h=envHead(adv)+errorsHTML(adv.env)+noticesHTML(adv.env);
+  else if(!o)h=`<div class="card">${bn?'দেখানোর মতো কোনো ফসল নেই।':'No crop option to replay.'}</div>`;
+  else{const ys=[];for(let y=2024;y>=2001;y--)ys.push(y);
+    h+=`<label class="yrpick">${bn?'উদাহরণের বছর (অতীতের একটি মৌসুম)':'Example year (one past season)'}<select id="twYear">${ys.map(y=>`<option value="${y}"${y===S.twinYear?' selected':''}>${num(y)}–${num(String(y+1).slice(2))}</option>`).join('')}</select></label>`;
+    if(!tw||tw.failed||!tw.env)h+=failHTML();
+    else{const e=tw.env;h+=envHead(tw);if((e.errors||[]).length)h+=errorsHTML(e);else h+=`<div class="note" style="margin-bottom:8px">${esc(tx(e.data.label))}</div>`+narrHTML(e);h+=noticesHTML(e)}}
+  box.innerHTML=h;bindSrc(box);box.querySelectorAll('[data-retry]').forEach(b=>b.onclick=retryAll);
+  const sel=$('twYear');if(sel)sel.onchange=()=>{S.twinYear=+sel.value;S.week=0;setPlay(false);renderTwin()};
+  if(S.week>nWeeks()-1)S.week=0;$('week').max=nWeeks()-1;
+  const d=twData();
+  $('twinEyebrow').textContent=(bn?'ধাপ ৪ / ৪':'Step 4 of 4')+(o?` · ${PREV[S.prev][L()]} → ${CN(o.crop)}`:'')+(d?(bn?` · উদাহরণ ${bnNum(d.year)}, বপন ${fd(d.sow_date)}`:` · example ${d.year}, sown ${fd(d.sow_date)}`):'');
+  const ws=o&&o.window_status;$('lateCard').hidden=!(ws&&ws.code&&ws.code!=='open');
+  if(!$('lateCard').hidden){$('lateCard').innerHTML=`<div class="big" style="flex:0 0 44px;height:44px;border-radius:12px;display:grid;place-items:center;background:rgba(0,0,0,.25)">${I.sun}</div><div><strong>${esc(tx(ws))}</strong><div class="sub" style="margin:4px 0 0">${esc(tx(o.problem_line))} ${srcBtn(o.problem_years&&o.problem_years.src)}</div></div>`;bindSrc($('lateCard'))}
+  yearStrip('yearTwin');buildScene();
+  const names=STAGE[L()];$('ticks').innerHTML=[0,2,4].map(i=>`<span>${names[i]}</span>`).join('');
+  const t=d&&d.totals;
+  const nd=[['var(--water)',bn?'সেচ লেগেছিল':'Irrigation needed',t?mvT(t.irrigation_need):'—'],['var(--leaf)',bn?'মৌসুমের বৃষ্টি':'Season rain',t?mvT(t.rain):'—'],['var(--gold)',bn?'মৌসুম শেষ':'Season ends',d?fd(d.season_end):'—']];
+  $('needs').innerHTML=nd.map(([col,a,b])=>`<div class="need" style="border-color:${col};background:color-mix(in srgb, ${col} 10%, transparent);color:${col}">${a}<b>${b}</b></div>`).join('')+(t?`<div style="grid-column:1/-1">${srcBtn(allSrc(t))}</div>`:'');bindSrc($('needs'));
+  const R=twRows(),col=['var(--leaf)','var(--water)','var(--amber)','var(--gold)','var(--gold)'];
+  $('stages').innerHTML=[0,1,2,3,4].map(i=>{const wk=R.map((_,k)=>k).filter(k=>vStage(k)===i);if(!wk.length)return'';const a=wk[0],b=wk[wk.length-1];const rg=b>a?`${a+1}–${b+1}`:`${a+1}`;
+    const risk=wk.some(k=>!['ok','irr'].includes(vEvent(k)))?(bn?' · সতর্ক থাকুন':' · watch out'):'';
+    return `<div class="stage" data-vs="${i}"><div class="wk" style="background:color-mix(in srgb, ${col[i]} 20%, transparent);color:${col[i]}"><small>${bn?'সপ্তাহ':'WEEK'}</small>${num(rg)}</div><div>${S.simple?STAGE['s_'+L()][i]:STAGE[L()][i]}${risk}</div></div>`}).join('');
+  renderWeek()}
+let timer=null;
+function setPlay(on){S.playing=on;$('playBtn').innerHTML=on?I.pause:I.play;$('playBtn').setAttribute('aria-label',on?'Pause':'Play season');clearInterval(timer);
+  if(on){timer=setInterval(()=>{if(S.week>=nWeeks()-1){setPlay(false);return}S.week++;renderWeek();if(S.narrate&&vEvent(S.week)!=='ok')speak(summary())},1600)}}
+$('playBtn').onclick=()=>{if(S.week>=nWeeks()-1)S.week=0;setPlay(!S.playing)};
+$('narr').onclick=()=>{S.narrate=!S.narrate;$('narr').setAttribute('aria-pressed',S.narrate);if(S.narrate)speak(summary())};
+$('week').oninput=e=>{setPlay(false);S.week=+e.target.value;renderWeek()};
+
+/* ---------- crops ---------- */
+function cropIcon(k){const h=(VIS[k]||VIS.mustard).head;return `<svg width="56" height="56" viewBox="-20 -60 40 64"><path d="M0 0 C -2 -18 2 -34 0 -46" stroke="#7BD389" stroke-width="3" fill="none"/>${h==='rice'||h==='maize'?'<path d="M0 0 C -6 -18 -12 -28 -16 -32M0 0 C 6 -18 12 -26 16 -28" stroke="#7BD389" stroke-width="2.5" fill="none"/>':'<ellipse cx="-7" cy="-16" rx="8" ry="3.4" fill="#6FBF5B" transform="rotate(-25 -7 -16)"/><ellipse cx="7" cy="-26" rx="8" ry="3.4" fill="#6FBF5B" transform="rotate(25 7 -26)"/>'}<g transform="translate(0 ${h==='maize'?-40:-46}) scale(1.4)">${h==='maize'?'<rect x="2" y="4" width="7" height="16" rx="3.5" fill="#F2C14E"/>':headSVG(h)}</g></svg>`}
+/* ring = problem years out of all years (both from the API); the arc is only a picture of those two numbers */
+function ring(v,n){const r=26,C=2*Math.PI*r;const bg=`<circle cx="32" cy="32" r="${r}" stroke="rgba(255,255,255,.12)" stroke-width="7" fill="none"/>`;
+  if(v==null||!n)return `<svg class="sring" width="64" height="64" viewBox="0 0 64 64">${bg}<text x="32" y="37" text-anchor="middle">—</text></svg>`;
+  const f=Math.min(1,v/n);return `<svg class="sring" width="64" height="64" viewBox="0 0 64 64">${v===0?`<circle cx="32" cy="32" r="${r}" stroke="#7BD389" stroke-opacity=".55" stroke-width="7" fill="none"/>`:bg}${v===0?'':`<circle cx="32" cy="32" r="${r}" stroke="#FF7A6B" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="${(C*f).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 32 32)"/>`}<text x="32" y="37" text-anchor="middle" style="font-size:13px">${num(v)}/${num(n)}</text></svg>`}
+const chainHTML=k=>{const seq=[S.prev].concat(S.flooded?['flood']:[]).concat(k?[k]:[]);return `<div class="chain">${seq.map((c,i)=>`${i?'<i>→</i>':''}<span class="c" style="background:${CCOL[c]||'#9BE3A6'}${c==='fallow'?';color:#F4F1E6':''}">${esc(CN(c))}</span>`).join('')}</div>`};
+const planSay=o=>`${CN(o.crop)}. ${tx(o.problem_line)}`;
+function hazardsHTML(o){const bn=L()==='bn',hc=o.hazards_checked||[],hm=o.hazards_missing||[];if(!hc.length&&!hm.length)return'';
+  return `<div class="haz detail">${hc.map(h=>`<div>${bn?'যাচাই':'Checked'}: <b>${esc(tx(h.label))}</b> · ${mvT(h.years_hit)} · ${bn?'সীমা':'limit'} ${mv(h.threshold)}</div>`).join('')}${hm.length?`<div style="color:var(--mute)">${bn?'এখনও যাচাই হয়নি':'Not checked yet'}: ${hm.map(h=>esc(tx(h.label))).join(', ')}</div>`:''}</div>`}
+function optCard(o,n,top){const bn=L()==='bn',sel=S.optCrop===o.crop,ws=o.window_status||{},py=o.problem_years||{};
+  const line=o.problem_line?tx(o.problem_line):(py.value!=null?`${num(py.value)} ${unitTxt(py.unit)}`:'');
+  return `<div class="plan ${top?'best':''}" data-plan="${esc(o.crop)}" style="${sel?'outline:2px solid var(--leaf);outline-offset:2px':''}">${sel?`<span class="badge-best" style="left:12px;right:auto;background:var(--leaf)">${bn?'বাছাই করা ✓':'Selected ✓'}</span>`:''}${top?`<span class="badge-best">${bn?'প্রথম স্থানে':'Top-ranked'}</span>`:''}
+    <div class="row">${ring(py.value,n)}<div style="flex:1">${chainHTML(o.crop)}<div style="margin:6px 0 0;font-size:12px">${esc(line)} ${srcBtn(py.src)}</div></div></div>
+    <div class="kv detail"><span>${bn?'বপন':'Sow'}</span><b>${o.sowing_date?fd(o.sowing_date.date)+' '+srcBtn(o.sowing_date.src):'—'}</b>
+     <span>${bn?'সুপারিশকৃত সময়':'Recommended window'}</span><b>${o.sowing_window?`${fd(o.sowing_window.start)} – ${fd(o.sowing_window.end)} ${srcBtn(o.sowing_window.src)}`:'—'}</b>
+     <span>${bn?'পাকার তারিখ':'Maturity'}</span><b>${o.maturity_date?fd(o.maturity_date.date)+' '+srcBtn(o.maturity_date.src):(bn?'হিসাব হয়নি':'not computed')}</b>
+     <span>${bn?'সেচ, গড়ে':'Irrigation, average'}</span><b>${mv(o.irrigation_need_avg)}</b>
+     <span>${bn?'সেচ, খারাপ ২০% বছরে':'Irrigation, worst 20% of years'}</span><b>${mv(o.irrigation_need_worst20)}</b></div>
+    ${hazardsHTML(o)}
+    ${o.coverage_notice?`<div class="note caution">${esc(tx(o.coverage_notice))}</div>`:''}${o.reason?`<div class="note caution">${esc(tx(o.reason))}</div>`:''}
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${ws.code?`<span class="fit ${WS_CLS[ws.code]||'late'}">${esc(tx(ws))}</span>`:''}<span style="flex:1"></span><button class="srcbtn" data-go-plan="${esc(o.crop)}">${bn?'টুইনে দেখুন ▶':'See in twin ▶'}</button></div></div>`}
+function amanCard(a){const bn=L()==='bn',w=a.sowing_window||{};
+  return `<div class="plan"><div class="row"><div style="flex:0 0 64px;display:grid;place-items:center">${cropIcon('aman_rice')}</div><div style="flex:1">${chainHTML('aman_rice')}<div style="margin:6px 0 0;font-size:12px">${esc(tx(a.problem_line))}</div></div></div>
+    <div class="kv detail"><span>${bn?'রোপণের সময়':'Transplanting window'}</span><b>${fd(w.start)} – ${fd(w.end)} ${srcBtn(w.src)}</b></div>
+    ${a.coverage_notice?`<div class="note caution">${esc(tx(a.coverage_notice))}</div>`:''}<div><span class="fit late">${bn?'র‍্যাঙ্ক করা হয়নি':'Not ranked'}</span></div></div>`}
+function renderPlans(showModal){paint($('plans'),getAdv,res=>{const box=$('plans'),e=res.env,bn=L()==='bn';let h=envHead(res);
+  if((e.errors||[]).length){box.innerHTML=h+errorsHTML(e)+noticesHTML(e);return}
+  const d=e.data||{},n=d.years_used&&d.years_used.value,opts=d.options||[],filt=d.filtered_out||[];
+  if(S.flooded){const es=d.earliest_sowing_date;h+=`<div class="card" style="border-color:rgba(79,195,247,.6);background:rgba(79,195,247,.1);display:flex;gap:10px;align-items:flex-start">${I.flood}<div><strong>${bn?'বন্যার পর সবচেয়ে আগে বপন':'After the flood, earliest sowing'}: ${es?fd(es.date):'—'}</strong> ${es?srcBtn(es.src):''}<div class="sub" style="margin:2px 0 0;font-size:11px">${esc(tx(es&&es.basis))}</div>${res.pf&&!advOK(res.pf)?`<div class="sub" style="margin:4px 0 0;font-size:11px;color:#FFD28A">${bn?'বন্যার পরের তারিখ পাওয়া যায়নি, তাই বন্যার তারিখ ধরা হয়েছে।':'The post-flood ready date was not available, so the flood date is used.'}</div>`:''}</div></div>`}
+  h+=narrHTML(e);
+  if(d.aman_option)h+=amanCard(d.aman_option);
+  h+=opts.map((o,i)=>optCard(o,n,i===0)).join('');
+  if(!opts.length&&!d.aman_option)h+=`<div class="card">${bn?'এই তারিখে কোনো ফসল র‍্যাঙ্ক করা যায়নি।':'No crop can be ranked for this date.'}</div>`;
+  if(filt.length)h+=`<h2 class="q" style="font-size:15px">${bn?'র‍্যাঙ্ক করা হয়নি':'Not ranked'}</h2>`+filt.map(o=>optCard(o,n,false)).join('');
+  if(d.method)h+=`<p class="sub detail" style="margin:10px 0 0;font-size:11px">${esc(tx(d.method))} ${d.years_used?srcBtn(d.years_used.src):''}</p>`;
+  h+=noticesHTML(e);box.innerHTML=h;
+  box.querySelectorAll('[data-go-plan]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();openPlan(b.dataset.goPlan)});
+  box.querySelectorAll('.plan[data-plan]').forEach(b=>b.onclick=()=>{const o=[...opts,...filt].find(x=>x.crop===b.dataset.plan);S.optCrop=o.crop;S.week=0;TWD=null;renderPlans(false);speak(planSay(o))});
+  if(showModal&&opts.length)planModal(opts[0],n,e)})}
+function openPlan(k){S.optCrop=k;S.week=0;TWD=null;closeModal();go('twin');setTimeout(()=>setPlay(true),700)}
+function closeModal(){document.querySelectorAll('.modal').forEach(m=>m.remove())}
+function modal(html){closeModal();const m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;m.onclick=e=>{if(e.target===m)closeModal()};document.body.appendChild(m);return m}
+function planModal(o,n,e){const bn=L()==='bn';
+  const why=[esc(tx(o.problem_line)),esc(tx(o.window_status)),o.irrigation_need_avg?`${bn?'সেচ: গড়ে':'Irrigation: on average'} ${mvT(o.irrigation_need_avg)}, ${bn?'খারাপ ২০% বছরে':'in the worst 20% of years'} ${mvT(o.irrigation_need_worst20)}`:'',esc(tx(o.coverage_notice)),esc(tx(o.why))].filter(Boolean);
+  const m=modal(`<span class="eyebrow">${bn?'অতীতের সব মৌসুমের NASA তথ্য থেকে':'From every past season of NASA data'}</span><h3>${bn?'প্রথম স্থানে থাকা ফসল':'The top-ranked crop'}</h3>
+  <div class="row" style="display:flex;gap:12px;align-items:center">${ring(o.problem_years&&o.problem_years.value,n)}${chainHTML(o.crop)}</div>
+  <ul class="why">${why.map(x=>`<li>${x}</li>`).join('')}</ul>
+  <div class="maplinks" style="margin-bottom:10px">${srcBtn(allSrc(o))}</div>
+  <p class="mock">${tr(T.mockPlans)}</p>
+  <div class="stack" style="margin-top:10px"><button class="btn gold" id="mGo">${bn?'আমার জমির টুইনে দেখুন':'See it in my field twin'}</button><button class="btn ghost" id="mAll">${bn?'সব ফসল তুলনা করুন':'Compare all crops'}</button></div>`);
+  m.querySelector('#mGo').onclick=()=>openPlan(o.crop);m.querySelector('#mAll').onclick=closeModal;bindSrc(m);speak(planSay(o));}
+function bindSrc(root){(root||document).querySelectorAll('[data-src]').forEach(b=>b.onclick=e=>{e.stopPropagation();showSrc(b.dataset.src.split(','))})}
+function srcCard(p){const bn=L()==='bn';const meta=[p.agency,p.period&&((bn?'সময়: ':'Period: ')+p.period),p.resolution&&((bn?'রেজোলিউশন: ':'Resolution: ')+p.resolution)].filter(Boolean).map(esc).join(' · ');
+  const nasa=/NASA/.test((p.agency||'')+(p.dataset||''));
+  return `<div class="src" id="src-${esc(p.id)}"><div style="display:flex;gap:8px;align-items:center"><h4 style="flex:1">${esc(p.dataset)}</h4>${nasa?'<span class="pill real">NASA</span>':''}</div>${meta?`<p>${meta}</p>`:''}${p.note?`<p>${esc(p.note)}</p>`:''}${p.url?`<div class="links"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url.replace(/^https?:\/\//,'').slice(0,52))} ↗</a></div>`:''}</div>`}
+function showSrc(ids){const bn=L()==='bn';modal(`<span class="eyebrow">${bn?'তথ্যের উৎস':'Data source'}</span><div class="stack" style="gap:8px">${ids.map(id=>PROV[id]?srcCard(PROV[id]):`<div class="src"><p>${esc(id)}: ${bn?'উৎসের বিবরণ এখনও আসেনি':'source details not loaded yet'}</p></div>`).join('')}</div><button class="btn ghost" style="margin-top:12px" onclick="this.closest('.modal').remove()">${bn?'বন্ধ করুন':'Close'}</button>`)}
+const MAPCREDITS=[{id:'esri',dataset:'Esri World Imagery (map picture only, not data)',agency:'Esri, Maxar, Earthstar Geographics',url:'https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9'},
+ {id:'eox',dataset:'Sentinel-2 cloudless 2023 by EOX (map picture only, not data)',agency:'EOX IT Services, CC BY-NC-SA 4.0, modified Copernicus data',url:'https://s2maps.eu/'}];
+const PROV_ORDER=['imerg','power','smap','opera','fao56','calendar','post_flood','assumptions'];
+function renderSources(){const bn=L()==='bn';paint($('srcList'),()=>Object.keys(PROV).length?{env:{}}:load('/api/v1/districts',{}),()=>{
+  const ids=Object.keys(PROV).sort((a,b)=>((PROV_ORDER.indexOf(a)+1)||99)-((PROV_ORDER.indexOf(b)+1)||99)||a.localeCompare(b));
+  $('srcList').innerHTML=ids.map(i=>srcCard(PROV[i])).join('')+`<h2 class="q" style="font-size:15px">${bn?'ম্যাপের ছবি (তথ্য নয়)':'Map pictures (not data)'}</h2>`+MAPCREDITS.map(srcCard).join('')})}
+/* ---------- farm inputs ---------- */
+function renderFarmExtras(){const bn=L()==='bn';
+  $('water').innerHTML=WATER.map((w,i)=>`<button class="wopt" data-wl="${i}" aria-pressed="${i===S.waterLvl}"><span class="drops">${[0,1,2,3].map(k=>`<svg width="10" height="${10+k*4}" viewBox="0 0 10 14"><path d="M5 0s5 6 5 9a5 5 0 0 1-10 0c0-3 5-9 5-9Z" fill="${k<=i?'#4FC3F7':'rgba(255,255,255,.18)'}"/></svg>`).join('')}</span>${w[L()]}</button>`).join('');
+  document.querySelectorAll('[data-wl]').forEach(b=>b.onclick=()=>{S.waterLvl=+b.dataset.wl;renderFarmExtras();speak(WATER[S.waterLvl][L()])});
+  $('prio').innerHTML=PRIO.map(([k,t])=>`<button class="chip" data-pr="${k}" aria-pressed="${S.prio.has(k)}">${t[L()]}</button>`).join('');
+  document.querySelectorAll('[data-pr]').forEach(b=>b.onclick=()=>{const k=b.dataset.pr;S.prio.has(k)?S.prio.delete(k):S.prio.add(k);renderFarmExtras()});
+  const rf=RF();const soil=[[bn?'মাটির ধরন':'Texture',rf?rf.soil[L()]:'—'],['pH','—'],[bn?'জৈব পদার্থ':'Organic matter','—']];
+  $('soil').innerHTML=soil.map(([a,b])=>`<div>${a}<b>${b}</b></div>`).join('');
+  $('soilNote').innerHTML=(rf?`<span class="pill sample">${bn?'মাঠের রেকর্ড':'FIELD RECORD'}</span> ${bn?`মাটির ধরন ${rf.id}-এর রেকর্ড থেকে, NASA তথ্য নয়।`:`Texture from the ${rf.id} field record, not NASA data.`}<br>`:'')+(bn?'শীঘ্রই: আপনার জমির মাটি SoilGrids থেকে। স্যাটেলাইট মাটির pH বা পুষ্টি মাপতে পারে না; উপজেলা কৃষি অফিসে মাটি পরীক্ষা করান।':'Coming soon: soil for your field from SoilGrids. Satellites cannot measure soil pH or nutrients; get a soil test at the Upazila Agriculture Office.');
+}
+/* ---------- flood screen: /api/v1/post-flood ---------- */
+function lineChart(rows,series,marks,aria){rows=(rows||[]).filter(r=>pd(r.date));if(rows.length<2)return'';
+  const W=360,H=170,x0=12,x1=W-12,ya=14,yb=H-22,bn=L()==='bn';
+  const ts=rows.map(r=>pd(r.date).getTime()),t0=Math.min(...ts),t1=Math.max(...ts);
+  const vals=[];rows.forEach(r=>series.forEach(s=>{if(r[s.key]!=null)vals.push(r[s.key])}));if(!vals.length)return'';
+  let lo=Math.min(...vals),hi=Math.max(...vals);if(hi===lo){hi+=1;lo-=1}const pad=(hi-lo)*.1;lo-=pad;hi+=pad;
+  const X=t=>x0+(t-t0)/((t1-t0)||1)*(x1-x0),Y=v=>ya+(1-(v-lo)/(hi-lo))*(yb-ya);
+  let g='';const m=new Date(t0);m.setDate(1);m.setMonth(m.getMonth()+1);
+  for(;m.getTime()<=t1;m.setMonth(m.getMonth()+1)){const x=X(m.getTime()).toFixed(1);g+=`<line x1="${x}" x2="${x}" y1="${ya}" y2="${yb}" stroke="rgba(255,255,255,.08)"/><text x="${x}" y="${H-8}" font-size="9" fill="rgba(244,241,230,.6)" text-anchor="middle">${(bn?MON.bn:MON.en)[m.getMonth()]}</text>`}
+  series.forEach(s=>{let d='',pen=false;rows.forEach(r=>{const v=r[s.key];if(v==null||(s.only&&!s.only(r))){if(!s.only)pen=false;return}d+=`${pen?'L':'M'}${X(pd(r.date).getTime()).toFixed(1)} ${Y(v).toFixed(1)} `;pen=true});
+    g+=`<path${s.dash?` stroke-dasharray="${s.dash}"`:' class="draw" pathLength="600"'} d="${d}" stroke="${s.color}" stroke-width="${s.w||2.5}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+    if(s.dots)rows.forEach(r=>{const v=r[s.key];if(v==null)return;g+=`<circle cx="${X(pd(r.date).getTime()).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.6" fill="${s.color}" opacity="${s.only&&!s.only(r)?.3:1}"/>`})});
+  (marks||[]).forEach((mk,i)=>{const t=pd(mk.date);if(!t||t.getTime()<t0||t.getTime()>t1)return;const x=X(t.getTime());
+    g+=`<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${ya}" y2="${yb}" stroke="${mk.color}" stroke-dasharray="3 3"/><text x="${Math.min(x+3,W-70).toFixed(1)}" y="${ya+10+i*12}" font-size="10" font-weight="700" fill="${mk.color}">${esc(mk.label)} ${esc(fd(mk.date))}</text>`});
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(aria)}">${g}</svg>`}
+function miniOpt(o){const bn=L()==='bn',ws=o.window_status||{};
+  return `<div class="card" style="padding:10px 12px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong style="flex:1">${esc(o.crop_name?tx(o.crop_name):CN(o.crop))}</strong>${ws.code?`<span class="fit ${WS_CLS[ws.code]||'late'}">${esc(tx(ws))}</span>`:''}</div>
+   ${o.problem_line?`<div style="margin:4px 0 0;font-size:12px">${esc(tx(o.problem_line))} ${srcBtn(o.problem_years&&o.problem_years.src)}</div>`:''}
+   <div class="sub detail" style="margin:2px 0 0;font-size:11px">${o.sowing_date?`${bn?'বপন':'Sow'} ${fd(o.sowing_date.date)} · `:''}${bn?'সেচ, গড়ে':'irrigation, average'} ${mv(o.irrigation_need_avg)}</div>
+   ${o.coverage_notice?`<div class="sub" style="margin:2px 0 0;font-size:10px;color:#FFD28A">${esc(tx(o.coverage_notice))}</div>`:''}</div>`}
+function renderFlood(){
+  $('fdist').innerHTML=DIST.map(d=>`<button class="chip" data-fd="${d[0]}" aria-pressed="${d[0]===S.fdist}">${L()==='bn'?d[2]:d[1]}</button>`).join('');
+  document.querySelectorAll('[data-fd]').forEach(b=>b.onclick=()=>{S.fdist=b.dataset.fd;renderFlood()});
+  paint($('floodBody'),()=>load('/api/v1/post-flood',{district:S.fdist,flood_date:floodEventDate(S.fdist)}),drawFlood)}
+function drawFlood(res){const box=$('floodBody'),e=res.env,bn=L()==='bn';S.floodEnv=e;let h=envHead(res);
+  if((e.errors||[]).length){box.innerHTML=h+errorsHTML(e)+noticesHTML(e);return}
+  const d=e.data||{},sb=d.soil_back_to_normal||{},w=d.water_on_ground||{},es=d.earliest_sowing_date;
+  h+=`<p class="sub" style="margin:0 0 8px">${bn?'বন্যার তারিখ':'Flood date'}: <b style="color:var(--ink)">${fd(d.flood_date)}</b></p>`+narrHTML(e);
+  const k=(label,val,sub,src,col)=>`<div class="k" style="border-color:${col}"><small>${label}</small><b style="font-size:20px">${val}</b><small>${sub}</small><div style="margin-top:6px">${srcBtn(src)}</div></div>`;
+  h+=`<div class="fkpi">${k(bn?'মাটি স্বাভাবিক হতে লেগেছে':'Soil back to normal after',mvT(sb.days_after_flood),fd(sb.date),sb.days_after_flood&&sb.days_after_flood.src,'rgba(123,211,137,.5)')}${k(bn?'সবচেয়ে আগে বপন':'Earliest sowing',es?fd(es.date):'—',esc(tx(es&&es.basis)),es&&es.src,'rgba(242,193,78,.5)')}</div>`;
+  if(w.available){const ps=w.peak_flood_share,dg=w.days_peak_to_gone;
+    h+=`<div class="fkpi" style="margin-top:10px">${k(bn?'রাডারে সবচেয়ে বেশি পানি':'Most water seen by radar',ps&&ps.value!=null?`${num(ps.value)}%`:'—',`${bn?'দেখা এলাকার':'of the area seen'} · ${mvT(w.peak_flood_area)} · ${fd(w.peak_date)}`,allSrc([ps,w.peak_flood_area]),'rgba(79,195,247,.5)')}${k(bn?'পানি প্রায় নেমে গেছে':'Water mostly gone',w.water_gone_date?fd(w.water_gone_date):'—',dg&&dg.value!=null?`${mvT(dg)} ${bn?'চূড়ার পরে':'after the peak'}`:esc(tx(w.reason)),dg&&dg.src,'rgba(79,195,247,.5)')}</div>`}
+  else if(w.reason)h+=`<div class="note caution" style="margin-top:10px">${esc(tx(w.reason))}</div>`;
+  const cv=sb.curve;
+  if(cv&&(cv.rows||[]).length>1)h+=`<div class="card fchart" style="margin-top:10px"><strong>${bn?'মাটির আর্দ্রতা (SMAP) ও স্বাভাবিক সীমা':'Soil moisture (SMAP) and the normal level'}</strong>${lineChart(cv.rows,[{key:'threshold',color:'#9BE3A6',dash:'4 4',w:1.5},{key:'value',color:'#4FC3F7',w:3}],[{date:d.flood_date,label:bn?'বন্যা':'flood',color:'#FF9A8C'},{date:sb.date,label:bn?'স্বাভাবিক':'normal',color:'#9BE3A6'}],'SMAP soil moisture')}<div class="sub" style="margin:4px 0 0;font-size:10px">${bn?'নীল = মূল অঞ্চলের মাটির আর্দ্রতা; সবুজ দাগ = স্বাভাবিক সীমা।':'Blue = root-zone soil moisture; green dashes = the normal level.'} ${esc(tx(sb.rule))} ${srcBtn(cv.src)}</div></div>`;
+  else if(sb.rule)h+=`<p class="sub" style="font-size:11px;margin:10px 0 0">${esc(tx(sb.rule))}</p>`;
+  const oc=w.curve;
+  if(oc&&(oc.rows||[]).length>1)h+=`<div class="card fchart" style="margin-top:10px"><strong>${bn?'রাডারে দেখা বন্যার পানি (OPERA)':'Flood water seen by radar (OPERA)'}</strong>${lineChart(oc.rows,[{key:'flood_pct',color:'#4FC3F7',w:2,dots:true,only:r=>r.used!==false}],[{date:w.peak_date,label:bn?'চূড়া':'peak',color:'#8FD8FA'},{date:w.water_gone_date,label:bn?'পানি নেমেছে':'gone',color:'#9BE3A6'}],'OPERA DSWx-S1 flood water')}<div class="sub" style="margin:4px 0 0;font-size:10px">${bn?'প্রতিটি বিন্দু একটি রাডার পাস: দেখা এলাকার কত শতাংশ বন্যার পানি। ঝাপসা বিন্দু = এলাকার অর্ধেকের কম দেখা গেছে।':'Each dot is one radar pass: the share of the area seen that was flood water. Faded dots = less than half the area was seen.'} ${esc(tx(w.rule))} ${srcBtn(oc.src)}</div></div>`;
+  const ims=(d.flood_images||[]).filter(im=>imgUrl(im.path));
+  if(ims.length)h+=`<div class="card" style="margin-top:10px"><strong>${bn?'NASA রাডারের বন্যা-মানচিত্র':'NASA radar flood maps'}</strong><div class="fimgs" style="margin-top:8px">${ims.map(im=>`<figure><img loading="lazy" src="${esc(imgUrl(im.path))}" alt="${esc(tx(im.caption))}" onerror="this.closest('figure').remove()"><figcaption>${esc(tx(im.caption))} ${srcBtn(im.src)}</figcaption></figure>`).join('')}</div></div>`;
+  if((sb.sensitivity||[]).length)h+=`<div class="card detail" style="margin-top:10px"><strong>${bn?'নিয়ম বদলালে মাটি কবে স্বাভাবিক':'Soil date if the rule changes'}</strong><table class="ctab"><tr><th>${bn?'শতাংশ সীমা':'Percentile'}</th><th>${bn?'তারিখ':'Date'}</th><th>${bn?'বন্যার পর':'After the flood'}</th></tr>${sb.sensitivity.map(s=>`<tr><td>${num(s.pct)}${bn?'তম':'th'}</td><td>${fd(s.date)}</td><td>${mv(s.days_after_flood)}</td></tr>`).join('')}</table></div>`;
+  const sp=d.still_possible||[],np=d.no_longer_possible||[];
+  if(sp.length)h+=`<h2 class="q" style="font-size:15px">${bn?'এখনও বোনা যায়':'Crops still possible'}</h2><div class="stack" style="gap:8px">${sp.map(miniOpt).join('')}</div>`;
+  if(np.length)h+=`<h2 class="q" style="font-size:15px">${bn?'আর বোনা যায় না':'No longer possible'}</h2><div class="stack" style="gap:8px">${np.map(miniOpt).join('')}</div>`;
+  const cs=d.cascade;
+  if(cs&&(cs.rows||[]).length)h+=`<div class="card" style="margin-top:10px"><strong>${bn?'বন্যা → দেরিতে বপন → ঝুঁকি':'Flood → late sowing → risk'}</strong><div class="sub" style="margin:2px 0 0;font-size:11px">${esc(tx(cs.compares))}</div><table class="ctab"><tr><th>${bn?'ফসল':'Crop'}</th><th>${bn?'সাথে সাথে প্রস্তুত হলে':'If ready at once'}</th><th>${bn?'বন্যার পর':'After the flood'}</th></tr>${cs.rows.map(r=>{const a=r.if_ready_at_once||{},b=r.after_flood||{};return `<tr><td><b>${esc(tx(r.crop_name))}</b><br><span class="fit ${{same:'ontime',fewer:'ontime',riskier:'late',lost:'toolate'}[r.change&&r.change.code]||'late'}">${esc(tx(r.change))}</span></td><td>${a.sowing_date?fd(a.sowing_date):'—'}<br>${mvT(a.problem_years)}</td><td>${b.sowing_date?fd(b.sowing_date):'—'}<br>${mvT(b.problem_years)}</td></tr>`}).join('')}</table>${srcBtn(allSrc(cs))}</div>`;
+  if(d.soil_test_advice)h+=`<div class="card" style="margin-top:10px;display:flex;gap:10px;align-items:center;border-color:rgba(242,193,78,.5);background:rgba(242,193,78,.08)">${I.test.replace('width="56" height="56"','width="32" height="32"')}<span>${esc(tx(d.soil_test_advice))}</span></div>`;
+  h+=noticesHTML(e);
+  const v=S.fdist==='sylhet'?'91.4,24.5,92.4,25.3&t=2022-06-20':'90.8,22.7,91.7,24.1&t=2024-08-25';
+  h+=`<div class="maplinks" style="margin-top:10px"><a href="https://worldview.earthdata.nasa.gov/?v=${v}" target="_blank" rel="noopener">${bn?'NASA Worldview-এ বন্যা দেখুন':'See this flood in NASA Worldview'} ↗</a></div>`;
+  box.innerHTML=h}
+const floodSay=()=>{const e=S.floodEnv;return e&&e.narration?tx(e.narration):tr(T.floodSub)};
+/* ---------- real map (Leaflet) ---------- */
+const mPerLat=111320;
+function fieldPoly(ll){const rf=RF();if(rf&&Math.abs(ll.lat-rf.lat)<1e-6&&Math.abs(ll.lng-rf.lon)<1e-6)return rf.px.map(p=>pxLL(rf,p));
+  const la=ll.lat,lo=ll.lng,dl=m=>m/mPerLat,dn=m=>m/(mPerLat*Math.cos(la*Math.PI/180));
+  return [[la+dl(22),lo-dn(34)],[la+dl(28),lo+dn(30)],[la-dl(20),lo+dn(36)],[la-dl(26),lo-dn(28)]]}
+function polyArea(pts){const R=6378137;let a=0;for(let i=0;i<pts.length;i++){const [y1,x1]=pts[i],[y2,x2]=pts[(i+1)%pts.length];a+=(x2-x1)*Math.PI/180*(2+Math.sin(y1*Math.PI/180)+Math.sin(y2*Math.PI/180))}return Math.abs(a*R*R/2)}
+function setAreaText(){const pts=S.fieldLL?fieldPoly(S.fieldLL):fieldPoly({lat:S.lat,lng:S.lon});const m2=polyArea(pts),dec=m2/40.47,big=dec/33;
+  $('areaTxt').textContent=L()==='bn'?`জমির মাপ প্রায় ${bnNum(Math.round(dec))} শতাংশ (${bnNum(big.toFixed(1))} বিঘা)`:`Field about ${Math.round(dec)} decimals (${big.toFixed(1)} bigha)`;
+  $('areaSub').textContent=L()==='bn'?`${bnNum(Math.round(m2).toLocaleString('en'))} বর্গমিটার · দাগ সরাতে ম্যাপে চাপ দিন`:`${Math.round(m2).toLocaleString('en')} m² · tap the map to move the outline`}
+function mapLinks(){const ll=S.fieldLL||{lat:S.lat,lng:S.lon};
+  $('maplinks').innerHTML=`<a href="https://www.google.com/maps/@${ll.lat.toFixed(5)},${ll.lng.toFixed(5)},400m/data=!3m1!1e3" target="_blank" rel="noopener">${L()==='bn'?'Google Maps-এ আসল জমি দেখুন':'Explore this spot in Google Maps'} ↗</a><a href="https://worldview.earthdata.nasa.gov/?v=${(ll.lng-.6).toFixed(2)},${(ll.lat-.5).toFixed(2)},${(ll.lng+.6).toFixed(2)},${(ll.lat+.5).toFixed(2)}&t=2024-08-25" target="_blank" rel="noopener">NASA Worldview ↗</a>`}
+let polyL=null,layerSet={};
+function initMap(){
+  mapLinks();setAreaText();
+  if(S.map){S.map.invalidateSize();if(!S.live){drawMap();mapStatus()}else{$('fieldzv').hidden=true;$('layers').style.display='';drawPoly()}return}
+  if(!LF){mapFallback();return}
+  const m=LF.map('leaf',{zoomControl:true,attributionControl:true,tap:true,maxZoom:21}).setView([S.lat,S.lon],16);S.map=m;
+  const sat=LF.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:19,maxZoom:21,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'});
+  /* NASA flood imagery is served by the CropShift API (/api/v1/images), so the website never calls NASA directly */
+  const s2=LF.tileLayer('https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2023_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg',{maxZoom:17,attribution:'Sentinel-2 cloudless 2023 by EOX (CC BY-NC-SA 4.0), modified Copernicus data'});
+  layerSet={sat,s2};sat.addTo(m);
+  sat.on('tileload',()=>{if(!S.live){S.live=true;$('map').classList.add('live');$('fieldzv').hidden=true;$('layers').style.display='';drawPoly();mapStatus()}});
+  setTimeout(()=>{if(!S.live)mapFallback()},4500);
+  const me=LF.divIcon({className:'',html:'<div style="width:18px;height:18px;border-radius:50%;background:#4FC3F7;border:3px solid #fff;box-shadow:0 0 14px #4FC3F7"></div>',iconSize:[18,18],iconAnchor:[9,9]});
+  LF.marker([S.lat,S.lon],{icon:me}).addTo(m);LF.circle([S.lat,S.lon],{radius:120,color:'#4FC3F7',weight:1,fillOpacity:.08}).addTo(m);
+  S.fieldLL=S.fieldLL||{lat:S.lat+0.0004,lng:S.lon+0.0003};drawPoly();
+  m.on('click',e=>{S.fieldLL=e.latlng;drawPoly();setAreaText();mapLinks()});
+  $('layers').innerHTML=[['sat',L()==='bn'?'স্যাটেলাইট':'Satellite'],['s2','Sentinel-2']].map(([k,t],i)=>`<button data-ly="${k}" aria-pressed="${i===0}">${t}</button>`).join('');
+  document.querySelectorAll('[data-ly]').forEach(b=>b.onclick=()=>{Object.values(layerSet).forEach(l=>m.removeLayer(l));layerSet[b.dataset.ly].addTo(m);document.querySelectorAll('[data-ly]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+  mapStatus();if(!S.live&&RF())drawMap();
+}
+function drawPoly(){if(!S.map)return;if(polyL)S.map.removeLayer(polyL);polyL=LF.polygon(fieldPoly(S.fieldLL),{color:'#F2C14E',weight:3,fillOpacity:.2}).addTo(S.map).bindTooltip(L()==='bn'?'আপনার জমি':'Your field',{permanent:true,direction:'top',className:''})}
+function mapFallback(){S.live=false;$('map').classList.remove('live');$('leaf').style.display='none';$('layers').innerHTML='';drawMap();mapStatus()}
+function mapStatus(){if(!S.live&&RF()){$('mapStatus').innerHTML=L()==='bn'?'আসল স্যাটেলাইট ছবি (উপর থেকে): হলুদ দাগ আপনার প্লট। ছবির তারিখ Esri জানায় না।':'Real satellite photo from above: the yellow outline is this plot. Esri does not publish the exact capture date.';return}$('mapStatus').innerHTML=S.live?(L()==='bn'?'আসল স্যাটেলাইট ম্যাপ। টেনে ঘুরে দেখুন, জুম করুন, তারপর আপনার জমিতে চাপ দিন।':'Live satellite map. Drag and zoom to explore, then tap your field.')
+  :(L()==='bn'?'এই প্রিভিউ বাইরের ছবি আটকে দেয়, তাই আঁকা ম্যাপ দেখানো হচ্ছে। অ্যাপটি নিজের ওয়েবসাইটে চালালে আসল স্যাটেলাইট ম্যাপ ও GPS কাজ করবে। আসল জায়গা দেখতে নিচের Google Maps লিংকে যান।':'This preview blocks outside images, so a drawn map is shown. When the app runs on its own website, the live satellite map and GPS work. Use the Google Maps link below to explore the real place.')}
+function initMini(){const ll=S.fieldLL||{lat:S.lat,lng:S.lon};$('miniLbl').textContent=L()==='bn'?'মহাকাশ থেকে আপনার জমি':'Your field from space';
+  if(S.live&&LF){if(!S.mini){S.mini=LF.map('mini',{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false,boxZoom:false,keyboard:false});LF.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}).addTo(S.mini)}
+    S.mini.setView([ll.lat,ll.lng],17);if(S.miniPoly)S.mini.removeLayer(S.miniPoly);S.miniPoly=LF.polygon(fieldPoly(ll),{color:'#F2C14E',weight:3,fillOpacity:.15}).addTo(S.mini);$('miniFallback').style.display='none';setTimeout(()=>S.mini.invalidateSize(),50)}
+  else{$('mini').style.display='none';const g=['#2E5E3A','#3F7A45','#8FA83A','#4A6B2F','#356B40'];let v='';for(let r=0;r<4;r++)for(let c=0;c<9;c++)v+=`<rect x="${c*42-10+(r%2)*10}" y="${r*36-6}" width="38" height="32" rx="2" fill="${g[(r*3+c*5)%5]}"/>`;
+    $('miniFallback').innerHTML=v+'<path d="M140 38 L220 30 L228 88 L148 96 Z" fill="#F2C14E" fill-opacity=".2" stroke="#F2C14E" stroke-width="3"/>'}}
+const sayOf=st=>L()==='bn'&&!(S.bnVoice==='phone'&&bnVoice())?st.say:st[L()];
+
+function prevIcon(k){const ic=PREV[k].icon;if(ic==='fallow')return '<svg width="48" height="48" viewBox="0 0 48 48"><rect x="4" y="26" width="40" height="14" rx="3" fill="#6B4A2B"/><path d="M8 31h32M8 36h32" stroke="#3B2616" stroke-width="2"/></svg>';
+  if(ic==='jute')return '<svg width="48" height="48" viewBox="-20 -52 40 56"><path d="M-6 0V-46M6 0V-40" stroke="#6FBF5B" stroke-width="3"/><ellipse cx="-12" cy="-30" rx="7" ry="3" fill="#6FBF5B" transform="rotate(-25 -12 -30)"/><ellipse cx="12" cy="-26" rx="7" ry="3" fill="#6FBF5B" transform="rotate(25 12 -26)"/><ellipse cx="-1" cy="-44" rx="6" ry="3" fill="#6FBF5B"/></svg>';
+  const m={rice:'boro',potato:'potato'}[ic];return cropIcon(m)}
+const FAGO=[[1,'About 1 week ago','প্রায় ১ সপ্তাহ আগে'],[2,'About 2 weeks ago','প্রায় ২ সপ্তাহ আগে'],[4,'About 1 month ago','প্রায় ১ মাস আগে'],[7,'Over 6 weeks ago','৬ সপ্তাহের বেশি আগে'],['ex','August 2024 flood (NASA example)','আগস্ট ২০২৪-এর বন্যা (NASA উদাহরণ)']];
+function renderFloodFarm(){const bn=L()==='bn';
+  $('floodBtn').innerHTML=`<span style="flex:0 0 auto">${I.flood}</span><span style="flex:1"><strong>${bn?'জমিতে বন্যা হয়েছে':'My field flooded'}</strong><br><span class="sub" style="font-size:11px">${bn?'চাপ দিলে NASA তথ্য দিয়ে দেখাবে মাটি কবে তৈরি হবে':'Tap to see when the soil will be ready, from NASA data'}</span></span><span class="fit ${S.flooded?'late':'ontime'}" style="flex:0 0 auto">${S.flooded?(bn?'হ্যাঁ':'Yes'):(bn?'না':'No')}</span>`;
+  $('floodBtn').style.borderColor=S.flooded?'var(--water)':'';$('floodBtn').setAttribute('aria-pressed',S.flooded);
+  $('floodBox').hidden=!S.flooded;$('harvBox').hidden=S.flooded;
+  if(!S.flooded)return;
+  $('fago').innerHTML=FAGO.map(([w,en,b])=>{const n=w==='ex'?5:Math.min(5,Math.ceil(w*5/7));return `<button class="hbtn" data-fa="${w}" aria-pressed="${w===S.floodAgo}"><span class="hdots">${[1,2,3,4,5].map(i=>`<i class="${i<=n?'f':''}" style="${i<=n?'background:var(--water)':''}"></i>`).join('')}</span><span>${bn?b:en}</span></button>`}).join('');
+  document.querySelectorAll('[data-fa]').forEach(b=>b.onclick=()=>{const v=b.dataset.fa;S.floodAgo=v==='ex'?'ex':+v;TWD=null;renderPrev();const f=FAGO.find(x=>String(x[0])===v);speak(bn?f[2]:f[1])});
+  paint($('floodRes'),getPF,res=>{const e=res.env,box=$('floodRes');let h=envHead(res);
+    if((e.errors||[]).length){h+=errorsHTML(e);if(S.floodAgo!=='ex')h+=`<button class="btn ghost" id="useEx" style="margin-top:8px">${bn?'আগস্ট ২০২৪-এর বন্যা দিয়ে দেখুন (NASA উদাহরণ)':'Try the August 2024 flood instead (NASA example)'}</button>`;
+      box.innerHTML=h;const u=$('useEx');if(u)u.onclick=()=>{S.floodAgo='ex';TWD=null;renderPrev()};return}
+    const d=e.data||{},es=d.earliest_sowing_date,sb=d.soil_back_to_normal||{},w=d.water_on_ground||{},r=es&&pd(es.date);
+    h+=`<div style="display:flex;gap:12px;align-items:center"><div class="dd" style="flex:0 0 auto;text-align:center;background:rgba(0,0,0,.25);border-radius:14px;padding:6px 12px"><b style="display:block;font:700 26px/1 var(--display);color:#8FD8FA">${r?num(r.getDate()):'—'}</b><span style="font-size:10px;font-weight:700">${r?(bn?MON.bn:MON.en)[r.getMonth()].toUpperCase()+' '+num(r.getFullYear()):''}</span></div>
+      <div><strong>${bn?'বন্যার পর সবচেয়ে আগে বপন':'Earliest sowing after the flood'}</strong> ${es?srcBtn(es.src):''}<div class="sub" style="margin:2px 0 0;font-size:11px">${esc(tx(es&&es.basis))}</div></div></div>
+      <div class="sub" style="margin:8px 0 0;font-size:11px">${bn?'বন্যার তারিখ':'Flood date'} ${fd(d.flood_date)} · ${bn?'মাটি স্বাভাবিক হতে':'soil back to normal after'} ${mv(sb.days_after_flood)}${w.available&&w.water_gone_date?` · ${bn?'রাডারে পানি প্রায় নেমেছে':'radar: water mostly gone'} ${fd(w.water_gone_date)}`:''}</div>`+noticesHTML(e);
+    box.innerHTML=h})}
+function renderPrev(){const bn=L()==='bn';
+  $('prevs').innerHTML=Object.keys(PREV).map(k=>`<button class="tile" data-prev="${k}" aria-pressed="${k===S.prev}"><span class="pic">${prevIcon(k)}</span><span class="tname">${PREV[k][L()]}</span></button>`).join('');
+  document.querySelectorAll('[data-prev]').forEach(b=>b.onclick=()=>{S.prev=b.dataset.prev;if(S.prev==='fallow')S.harvW=0;TWD=null;renderPrev();speak(PREV[S.prev].bn&&L()==='bn'?PREV[S.prev].bn:PREV[S.prev].en)});
+  const dis=S.prev==='fallow';
+  $('harv').innerHTML=HARV.map(([w,en,b])=>`<button class="hbtn" data-w="${w}" aria-pressed="${w===S.harvW}" ${dis&&w?'disabled style="opacity:.35"':''}><span class="hdots">${[1,2,3,4,5].map(i=>`<i class="${i<=w?'f':''}"></i>`).join('')}</span><span>${bn?b:en}</span></button>`).join('');
+  document.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{if(b.disabled)return;S.harvW=+b.dataset.w;TWD=null;renderPrev();speak(L()==='bn'?HARV.find(h=>h[0]===S.harvW)[2]:HARV.find(h=>h[0]===S.harvW)[1])});
+  renderFloodFarm();
+  paint($('earliest'),getAdv,res=>{const e=res.env,box=$('earliest');
+    if((e.errors||[]).length){box.innerHTML=`<div style="flex:1">${envHead(res)}${errorsHTML(e)}</div>`;return}
+    const d=e.data||{},es=d.earliest_sowing_date,r=es&&pd(es.date);
+    box.innerHTML=`<div class="dd"><b>${r?num(r.getDate()):'—'}</b><span>${r?(bn?MON.bn:MON.en)[r.getMonth()].toUpperCase():''}</span></div><div style="flex:1"><strong>${bn?'নতুন ফসল সবচেয়ে আগে বোনা যাবে':'Earliest date to sow the next crop'}</strong> ${es?srcBtn(es.src):''}<div class="sub" style="margin:2px 0 6px">${r?fd(es.date)+'. ':''}${esc(tx(es&&es.basis))}<br>${bn?'আজ':'Today'}: ${fd(iso(TODAY))}</div>${S.flooded&&res.pf&&!advOK(res.pf)?`<div class="sub" style="margin:0 0 6px;font-size:11px;color:#FFD28A">${bn?'বন্যার পরের তারিখ পাওয়া যায়নি, তাই বন্যার তারিখ ধরা হয়েছে।':'The post-flood ready date was not available, so the flood date is used.'}</div>`:''}${envHead(res)}</div>`})}
+/* ---------- help ---------- */
+function helpSteps(){const d=advData();if(!d)return [];const o=curOpt(d),st=[];
+  if(S.flooded&&d.earliest_sowing_date){const s=d.earliest_sowing_date.date;st.push({icon:'flood',col:'var(--water)',en:`Wait for the soil to dry: ready around ${fdl(s,'en')}`,bn:`মাটি শুকানো পর্যন্ত অপেক্ষা করুন: প্রায় ${fdl(s,'bn')}`,say:'মাটি শুকানো পর্যন্ত অপেক্ষা করুন, তারপর বুনুন'})}
+  if(d.aman_option&&d.aman_option.problem_line){const p=d.aman_option.problem_line;st.push({icon:'next',crop:'aman_rice',col:CCOL.aman_rice,en:p.en,bn:p.bn,say:p.bn})}
+  if(o){const nm=o.crop_name||{en:CN(o.crop),bn:CN(o.crop)},s=o.sowing_date&&o.sowing_date.date,pl=o.problem_line||{};
+    st.push({icon:'seed',col:'var(--leaf)',en:s?`Sow ${String(nm.en).toLowerCase()} around ${fdl(s,'en')}`:`${nm.en}: ${pl.en||''}`,bn:s?`${fdl(s,'bn')}-এর দিকে ${nm.bn} বুনুন`:`${nm.bn}: ${pl.bn||''}`,say:`${nm.bn} বুনুন`});
+    const ia=o.irrigation_need_avg,iw=o.irrigation_need_worst20,wv=iw&&iw.value!=null?iw.value:null;
+    st.push(ia&&ia.value!=null?{icon:'drop',col:'var(--water)',en:`Irrigation: about ${ia.value} mm on average${wv!=null?`, ${wv} mm in the worst 20% of years`:''}`,bn:`সেচ: গড়ে প্রায় ${bnNum(ia.value)} মিমি${wv!=null?`, খারাপ ২০% বছরে ${bnNum(wv)} মিমি`:''}`,say:`সেচ: গড়ে প্রায় ${bnNum(ia.value)} মিমি`}
+      :{icon:'drop',col:'var(--water)',en:'Irrigation need not computed for this crop',bn:'এই ফসলের সেচের হিসাব হয়নি',say:'এই ফসলের সেচের হিসাব হয়নি'});
+    const mr=o.main_risks||[];
+    if(mr.length){const h=mr[0],yh=h.years_hit||{},m=String(yh.unit||'').match(/of (\d+) years/);const ic=h.hazard==='waterlog'?'flood':/cold/.test(h.hazard)?'cold':'sun';
+      st.push({icon:ic,col:'var(--amber)',en:`Watch for ${String(tx(h.label)&&h.label.en||'').toLowerCase()}: it hit in ${yh.value} ${yh.unit||''} here`,bn:`সাবধান, ${h.label.bn}: এখানে ${m?`${bnNum(m[1])} বছরের মধ্যে `:''}${bnNum(yh.value)} বছরে`,say:`সাবধান, ${h.label.bn}`})}
+    else if(pl.en)st.push({icon:'ok',col:'var(--amber)',en:pl.en,bn:pl.bn,say:pl.bn})}
+  st.push({icon:'test',col:'#9BE3A6',en:'Test your soil at the Upazila Agriculture Office',bn:'উপজেলা কৃষি অফিসে মাটি পরীক্ষা করুন',say:'উপজেলা কৃষি অফিসে মাটি পরীক্ষা করুন'});
+  return st}
+function renderHelp(){const bn=L()==='bn';
+  $('mSimple').innerHTML=`<span class="aa">Aa</span> ${bn?'সহজ ভাষা':'Simple words'}: ${S.simple?(bn?'চালু':'on'):(bn?'বন্ধ':'off')}`;
+  $('mPics').innerHTML=`${I.pics.replace('width="24" height="24"','width="16" height="16"')} ${bn?'শুধু ছবি':'Pictures only'}: ${S.pics?(bn?'চালু':'on'):(bn?'বন্ধ':'off')}`;
+  $('mVoice').innerHTML=`${I.speaker.replace('width="22" height="20"','width="16" height="14"')} ${bn?'কণ্ঠ: বাংলা (ইংরেজিতে যান)':'Voice: English (tap for বাংলা)'}`;
+  $('vsLabel').textContent=bn?'বাংলা কণ্ঠ':'Bangla voice';$('vPhone').textContent=bn?'ফোনের':'Phone';$('vRec').textContent=bn?'রেকর্ড করা':'Recorded';$('vPhone').setAttribute('aria-pressed',S.bnVoice==='phone');$('vRec').setAttribute('aria-pressed',S.bnVoice==='rec');
+  $('wave').innerHTML=[8,16,24,14,20,28,12,22,30,18,10,24,16,26,12,8,18,22].map((v,i)=>`<i style="height:${v}px;animation-delay:${(i%6)*.09}s"></i>`).join('');
+  paint($('psteps'),getAdv,res=>{const e=res.env;
+    if((e.errors||[]).length){$('planHead').innerHTML=envHead(res);$('psteps').innerHTML=errorsHTML(e);return}
+    const st=helpSteps(),o=curOpt(advData());
+    $('planHead').innerHTML=envHead(res)+`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><strong style="font-size:13px">${bn?'আপনার পরিকল্পনা:':'Your plan:'}</strong>${chainHTML(o&&o.crop)}</div>${S.flooded?`<div class="sub" style="margin:6px 0 0;font-size:11px">${bn?'বন্যার পরের পরিকল্পনা':'Plan after the flood'}</div>`:''}`;bindSrc($('planHead'));
+    $('psteps').innerHTML=st.map((s,i)=>`<button class="pstep" data-i="${i}"><span class="n" style="background:${s.col}">${num(i+1)}</span><span class="spk">${I.speaker.replace('width="22" height="20"','width="15" height="14"')}</span><span class="pic">${s.icon==='next'?cropIcon(s.crop in VIS?s.crop:'boro'):s.icon==='seed'||s.icon==='test'?I[s.icon]:bigIcon(s.icon)}</span><strong>${esc(s[L()])}</strong><span class="tbn detail">${esc(s[bn?'en':'bn'])}</span></button>`).join('');
+    document.querySelectorAll('.pstep').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;hi(i);speak(sayOf(st[i]),()=>hi(-1))})})}
+function hi(i){document.querySelectorAll('.pstep').forEach((b,j)=>b.classList.toggle('speaking',j===i));$('wave').classList.toggle('on',i>=0)}
+$('playAll').onclick=()=>{const st=helpSteps();let i=0;const next=()=>{if(i>=st.length){hi(-1);return}hi(i);speak(sayOf(st[i]),()=>{i++;setTimeout(next,250)})};next()};
+$('vPhone').onclick=()=>{if(!bnVoice()){toast('This phone has no Bangla voice installed. Using the built-in Bangla recording.');S.bnVoice='rec'}else S.bnVoice='phone';renderHelp()};
+$('vRec').onclick=()=>{S.bnVoice='rec';renderHelp()};
+$('mSimple').onclick=()=>{S.simple=!S.simple;save();render()};
+$('mPics').onclick=()=>{S.pics=!S.pics;render()};
+$('mVoice').onclick=()=>{setLang(L()==='en'?'bn':'en')};
+
+/* ---------- screen summary for read-aloud ---------- */
+function summary(){
+  switch(S.screen){
+   case 'start':return [tr(T.startH),tr(T.startSub)];
+   case 'field':return [tr(T.fieldH),tr(T.fieldSub)];
+   case 'prev':return [tr(T.prevH),tr(T.prevSub),tr(T.harvQ)];
+   case 'crop':{const d=advData(),o=d&&(d.options||[])[0];return [tr(T.plansH),o?planSay(o):'']}
+   case 'flood':return [tr(T.floodH),floodSay()];
+   case 'sources':return [tr(T.srcH)];
+   case 'twin':{const st=vStage(S.week);return [S.simple?STAGE['s_'+L()][st]:STAGE[L()][st],tr(EV[vEvent(S.week)])]}
+   case 'help':return helpSteps().map(sayOf);
+  }return []}
+/* dev helper: the fixed Bangla lines that have (or need) a recorded clip in bn/ */
+window.__collectBn=()=>{const out=new Set(),keep=S.lang,ks=S.simple;S.lang='bn';
+  for(const simple of [false,true]){S.simple=simple;
+    ['startH','startSub','fieldH','fieldSub','prevH','prevSub','harvQ','plansH','floodH','srcH'].forEach(k=>out.add(tr(T[k])));
+    Object.values(PREV).forEach(p=>out.add(p.bn));HARV.forEach(h=>out.add(h[2]));WATER.forEach(w=>out.add(w.bn));FAGO.forEach(x=>out.add(x[2]));
+    STAGE.bn.forEach(x=>out.add(x));STAGE.s_bn.forEach(x=>out.add(x));Object.values(EV).forEach(e=>out.add(tr(e)));
+    ['জমিতে বন্যা হয়েছে','না','মাটি শুকানো পর্যন্ত অপেক্ষা করুন, তারপর বুনুন','উপজেলা কৃষি অফিসে মাটি পরীক্ষা করুন'].forEach(x=>out.add(x));
+    ['wheat','mustard','lentil','potato','boro_rice'].forEach(k=>out.add(`${CNAME[k][1]} বুনুন`))}
+  S.lang=keep;S.simple=ks;return [...out].map(t=>({t,h:hash(t)}))};
+$('speak').onclick=()=>{if($('speak').classList.contains('on')){stopSpeak();return}speak(summary())};
+
+
+
+/* ---------- real-field top view: real photo + simulated crop ---------- */
+const RFIMG={};
+function rfImg(f,cb){let im=RFIMG[f.id];if(im&&im.complete&&im.naturalWidth){return im}if(!im){im=new Image();im.onload=()=>{ZVF.draw();ZVT.draw()};im.src=f.img;RFIMG[f.id]=im}return null}
+function rnd(i){const x=Math.sin(i*12.9898)*43758.5453;return x-Math.floor(x)}
+/* Zoom viewer: pan (drag), zoom (wheel, pinch, double-tap, +/− buttons), ⌖ = back to the plot. s = screen px per image px. */
+function makeZV(box,overlay){const cv=box.querySelector('canvas'),ctx=cv.getContext('2d');const V={s:1,cx:0,cy:0,f:null};
+  const ptr=new Map();let last=null,pinch=null,tap=0;
+  const size=()=>{const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;const w=Math.max(1,Math.round(r.width*d)),h=Math.max(1,Math.round(r.height*d));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}return d};
+  V.lim=()=>{const f=V.f;if(!f)return;const d=window.devicePixelRatio||1,min=Math.max(cv.width/f.W,cv.height/f.H),max=10*d;V.s=Math.min(max,Math.max(min,V.s));
+    const hw=cv.width/2/V.s,hh=cv.height/2/V.s;V.cx=Math.min(f.W-hw,Math.max(hw,V.cx));V.cy=Math.min(f.H-hh,Math.max(hh,V.cy))};
+  V.fit=()=>{V.f=RF();if(!V.f||box.hidden)return;const d=size(),f=V.f,xs=f.px.map(p=>p[0]),ys=f.px.map(p=>p[1]);
+    V.cx=(Math.min(...xs)+Math.max(...xs))/2;V.cy=(Math.min(...ys)+Math.max(...ys))/2;V.s=Math.min(cv.width/((Math.max(...xs)-Math.min(...xs))*2.2),cv.height/((Math.max(...ys)-Math.min(...ys))*2.2));V.lim();V.draw()};
+  V.zoom=(k,px,py)=>{if(px==null){px=cv.width/2;py=cv.height/2}const ix=V.cx+(px-cv.width/2)/V.s,iy=V.cy+(py-cv.height/2)/V.s;V.s*=k;V.lim();V.cx=ix-(px-cv.width/2)/V.s;V.cy=iy-(py-cv.height/2)/V.s;V.lim();V.draw()};
+  V.T=([x,y])=>[(x-V.cx)*V.s+cv.width/2,(y-V.cy)*V.s+cv.height/2];
+  V.draw=()=>{const f=RF();if(!f||box.hidden)return;if(V.f!==f){V.fit();return}const d=size(),im=rfImg(f);if(!im)return;V.lim();
+    ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#16301F';ctx.fillRect(0,0,cv.width,cv.height);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.drawImage(im,V.cx-cv.width/2/V.s,V.cy-cv.height/2/V.s,cv.width/V.s,cv.height/V.s,0,0,cv.width,cv.height);
+    overlay(ctx,V,f,d);
+    const P=f.px.map(V.T);ctx.lineWidth=3*d;ctx.strokeStyle='#F2C14E';ctx.beginPath();P.forEach(([a,b],j)=>j?ctx.lineTo(a,b):ctx.moveTo(a,b));ctx.closePath();ctx.stroke();
+    ctx.font=`${10*d}px sans-serif`;ctx.fillStyle='rgba(255,255,255,.85)';ctx.textAlign='right';ctx.fillText('© Esri, Maxar, Earthstar',cv.width-6*d,cv.height-6*d);
+    // scale bar
+    const mPerScreen=MPP/V.s*d;let m=[1,2,5,10,20,50,100].find(v=>v/mPerScreen>=60)||100;box.querySelector('.zvscale i').style.width=(m/mPerScreen)+'px';box.querySelector('.zvscale span').textContent=`${num(m)} ${L()==='bn'?'মিটার':'m'}`;
+    const n=box.querySelector('.zvnote'),deep=V.s/d>2.2;n.classList.toggle('on',deep);
+    n.textContent=deep?(L()==='bn'?`সবচেয়ে পরিষ্কার স্যাটেলাইট ছবি: প্রতি পিক্সেল ≈${bnNum(Math.round(MPP*100))} সেমি। এর চেয়ে কাছ থেকে একেকটি গাছ দেখা যায় না${overlay.sim?'; গাছগুলো আঁকা (অনুমান)':''}।`:`Sharpest satellite photo: ≈${Math.round(MPP*100)} cm per pixel. Single plants are too small to see from space${overlay.sim?', so the plants here are drawn (simulated)':''}.`):''};
+  const pos=e=>{const r=cv.getBoundingClientRect(),d=cv.width/r.width;return [(e.clientX-r.left)*d,(e.clientY-r.top)*d]};
+  cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,pos(e));last=pos(e);
+    if(ptr.size===2){const [a,b]=[...ptr.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1])}}
+    const now=Date.now();if(ptr.size===1&&now-tap<300){const [x,y]=pos(e);V.zoom(2,x,y)}tap=now});
+  cv.addEventListener('pointermove',e=>{if(!ptr.has(e.pointerId))return;const p=pos(e);ptr.set(e.pointerId,p);
+    if(ptr.size===2&&pinch){const [a,b]=[...ptr.values()],dd=Math.hypot(a[0]-b[0],a[1]-b[1]);V.zoom(dd/pinch.d,(a[0]+b[0])/2,(a[1]+b[1])/2);pinch.d=dd;return}
+    if(ptr.size===1&&last){V.cx-=(p[0]-last[0])/V.s;V.cy-=(p[1]-last[1])/V.s;last=p;V.draw()}});
+  const up=e=>{ptr.delete(e.pointerId);if(ptr.size<2)pinch=null;last=ptr.size?[...ptr.values()][0]:null};
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  cv.addEventListener('wheel',e=>{e.preventDefault();const [x,y]=pos(e);V.zoom(e.deltaY<0?1.25:0.8,x,y)},{passive:false});
+  box.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>{const z=b.dataset.z;z==='fit'?V.fit():V.zoom(z==='in'?1.6:0.625)});
+  window.addEventListener('resize',()=>V.draw());
+  return V}
+/* Twin overlay: the plan's crop drawn on the REAL photo inside the plot (simulated). Far: recolour + row texture. Close: single plants at real spacing. */
+function cropOverlay(x,V,f,d){const c=vis(),w=S.week,st=vStage(w),ev=vEvent(w),g=growth(w),ripe=isRipe(w);
+  const P=f.px.map(V.T);x.save();x.beginPath();P.forEach(([a,b],i)=>i?x.lineTo(a,b):x.moveTo(a,b));x.closePath();x.clip();
+  const W=x.canvas.width,H=x.canvas.height,[ax,ay]=P[0],[bx,by]=P[2];
+  const flowerOn=c.head==='mustard'&&(st===2||st===3)&&!ripe;
+  const leaf=ripe?(c.head==='rice'||c.head==='wheat'?'#D8B54C':'#B9A25A'):(c.head==='lentil'||c.head==='potato'?'#3F8A36':'#62AE3E');
+  const mix=(h1,h2,t)=>{const p=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16));const A=p(h1),B=p(h2);return `rgb(${A.map((v,i)=>Math.round(v+(B[i]-v)*t)).join(',')})`};
+  const tint=flowerOn?'#EBCB2E':st===0?'#8A6440':mix('#8A6440',leaf,Math.min(1,g*1.4));
+  x.globalCompositeOperation='color';x.globalAlpha=.92;x.fillStyle=tint;x.fillRect(0,0,W,H);
+  x.globalCompositeOperation='multiply';x.globalAlpha=st===0?.55:.25*(1-g);x.fillStyle='#B98C5E';x.fillRect(0,0,W,H);x.globalCompositeOperation='source-over';
+  if(c.head==='rice'&&g<0.6){x.globalAlpha=.28*(1-g);x.fillStyle='#9CCFE8';x.fillRect(0,0,W,H)}
+  // real plant spacing (m): rice 0.20×0.20, mustard/lentil 0.30×0.08, wheat 0.20×0.05, potato 0.60×0.25, maize 0.60×0.20
+  const SP={rice:[.2,.2],mustard:[.3,.1],lentil:[.3,.1],wheat:[.2,.08],potato:[.6,.25],maize:[.6,.2]}[c.head]||[.3,.1];
+  const pxm=V.s/MPP; // screen px per metre
+  let rowSp=SP[0]*pxm,colSp=SP[1]*pxm,real=true;if(rowSp<5*d||colSp<4*d){real=false;rowSp=(c.head==='rice'?6:8)*d;colSp=(c.head==='rice'?6:5)*d}
+  if(st===0){x.globalAlpha=.35;x.strokeStyle='#3B2616';x.lineWidth=Math.max(1,rowSp*.12);for(let yy=ay;yy<by;yy+=rowSp){x.beginPath();x.moveTo(ax,yy);x.lineTo(bx,yy);x.stroke()}}
+  else{const r=real?(0.04+g*(c.head==='potato'?.28:c.head==='maize'?.3:.11))*pxm:(0.5+g*(c.head==='potato'?4:2.6))*d;
+    // index plants by their position on the ground so they stay put while you pan
+    const [ix0,iy0]=[V.cx-W/2/V.s,V.cy-H/2/V.s];const gx=Math.floor(((ax-0)/V.s+ix0)*MPP/SP[1]),gy=Math.floor(((ay-0)/V.s+iy0)*MPP/SP[0]);
+    const x0=Math.max(ax,-colSp),y0=Math.max(ay,-rowSp),x1=Math.min(bx,W+colSp),y1=Math.min(by,H+rowSp);
+    let n=0;for(let yy=ay+rowSp/2+Math.max(0,Math.floor((y0-ay)/rowSp))*rowSp;yy<y1;yy+=rowSp){const ri=Math.round((yy-ay)/rowSp);
+      for(let xx=ax+colSp/2+Math.max(0,Math.floor((x0-ax)/colSp))*colSp;xx<x1;xx+=colSp){const ci=Math.round((xx-ax)/colSp),id=ri*7919+ci;if(++n>60000)break;
+        const jx=(rnd(id)-.5)*colSp*.35,jy=(rnd(id+7)-.5)*rowSp*.25,rr=r*(0.75+rnd(id+3)*0.5),px=xx+jx,py=yy+jy;
+        const col=rnd(id+2)<.5?leaf:mix(leaf,'#1E3A14',.35);
+        if(real&&rr>3*d&&(c.head==='rice'||c.head==='wheat'||c.head==='maize')){x.globalAlpha=.9;x.strokeStyle=col;x.lineWidth=Math.max(1,rr*.12);x.beginPath();
+          for(let k=0;k<7;k++){const an=rnd(id+k*3)*6.283;x.moveTo(px,py);x.lineTo(px+Math.cos(an)*rr,py+Math.sin(an)*rr)}x.stroke();
+          if(ripe||st>=3){x.fillStyle=ripe?'#E8C75A':'#B8D46A';for(let k=0;k<3;k++){const an=rnd(id+k*5+1)*6.283;x.beginPath();x.arc(px+Math.cos(an)*rr*.6,py+Math.sin(an)*rr*.6,rr*.14,0,6.283);x.fill()}}}
+        else{x.globalAlpha=real?.92:.28+rnd(id+3)*.2;x.fillStyle=col;x.beginPath();x.arc(px,py,rr,0,6.283);x.fill();
+          if(real&&rr>3*d){x.globalAlpha=.5;x.strokeStyle=mix(leaf,'#0E2008',.5);x.lineWidth=1;x.beginPath();x.moveTo(px-rr*.6,py);x.lineTo(px+rr*.6,py);x.moveTo(px,py-rr*.6);x.lineTo(px,py+rr*.6);x.stroke()}}
+        if(flowerOn&&rnd(id+11)<.7){x.globalAlpha=.95;x.fillStyle='#FFE45C';x.beginPath();x.arc(px+rr*.2,py-rr*.3,real?rr*.45:rr*.7,0,6.283);x.fill()}}}}
+  x.globalAlpha=1;
+  if(ev==='flood'){x.fillStyle='rgba(79,160,220,.62)';x.fillRect(0,0,W,H);x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=d;for(let yy=ay+6*d;yy<by;yy+=14*d){x.beginPath();for(let xx=ax;xx<bx;xx+=8*d)x.lineTo(xx,yy+Math.sin(xx/9)*2*d);x.stroke()}}
+  x.restore();
+  const bn=L()==='bn',sn=S.simple?STAGE['s_'+L()][st]:STAGE[L()][st];
+  $('topchip').textContent=(bn?`উপর থেকে · সপ্তাহ ${bnNum(w+1)} · `:`From above · Week ${w+1} · `)+sn;
+  $('toplbl').textContent=bn?'আসল স্যাটেলাইট ছবি + হলুদ দাগের ভেতরে পরিকল্পনার ফসল (অনুমান)। আঙুল দিয়ে জুম করুন।':'Real satellite photo + the plan\'s crop drawn inside the yellow plot (simulated). Pinch or scroll to zoom.';
+}
+cropOverlay.sim=true;
+const ZVF=makeZV($('fieldzv'),()=>{}),ZVT=makeZV($('topview'),cropOverlay);
+function drawTop(){ZVT.draw()}
+/* ---------- real named fields ---------- */
+function rfDl(f){const bn=L()==='bn';return `<dl><dt>${bn?'অবস্থান':'Location'}</dt><dd>${num(f.lat.toFixed(4))}° N, ${num(f.lon.toFixed(4))}° E</dd><dt>${bn?'ঠিকানা':'Address'}</dt><dd>${f.addr}</dd><dt>${bn?'ধরন':'Type'}</dt><dd>${f.type[L()]}</dd><dt>${bn?'মাটি':'Soil'}</dt><dd>${f.soil[L()]}</dd><dt>${bn?'সেচ':'Water'}</dt><dd>${f.water[L()]}</dd><dt>${bn?'প্রধান ফসল':'Main crops'}</dt><dd>${f.crops[L()]}</dd></dl>
+  <p class="sub" style="margin:8px 0 0;font-size:11px"><span class="pill sample">${bn?'মাঠের রেকর্ড':'FIELD RECORD'}</span> ${bn?'এই তথ্য দলের দেওয়া মাঠের রেকর্ড থেকে, NASA-র তথ্য নয়। মাঠে গিয়ে যাচাই করুন।':'From the field record the team provided, not from a NASA dataset. Check on site.'}</p>`}
+function renderRfList(){$('rfList').innerHTML=RFIELDS.map(f=>`<button class="card rfbtn" data-rf="${f.id}" aria-pressed="${S.rf===f.id}"><span style="flex:0 0 auto">${I.pin}</span><span style="flex:1"><span class="id" style="font:700 10px var(--display);letter-spacing:.08em;color:var(--gold)">${f.id}</span><br><strong>${f[L()]}</strong><br><span class="sub" style="font-size:11px">${f.soil[L()]} · ${f.water[L()]}</span></span></button>`).join('');
+  document.querySelectorAll('[data-rf]').forEach(b=>b.onclick=()=>pickRf(b.dataset.rf))}
+function pickRf(id){const f=RFIELDS.find(x=>x.id===id);S.fieldLL=null;S.rf=id;S.gps=false;S.lat=f.lat;S.lon=f.lon;S.fieldLL={lat:f.lat,lng:f.lon};S.waterLvl=f.wl;S.prev=f.prev;S.optCrop=null;TWD=null;
+  S.fieldLL={lat:f.lat,lng:f.lon};$('coords').textContent=(L()==='bn'?'আসল জমি · ':'Real field · ')+num(f.lat.toFixed(4))+'° N, '+num(f.lon.toFixed(4))+'° E';if(S.map){S.map.setView([f.lat,f.lon],18);drawPoly()}go('field');speak([f[L()]])}
+function renderRfField(){const f=RF(),el=$('rfField');el.hidden=!f;if(!f)return;
+  el.innerHTML=`<div class="id">${f.id} · ${L()==='bn'?'আসল জমি':'REAL FIELD'}</div><strong>${f[L()]}</strong>${rfDl(f)}`}
+function rfVideoEmpty(f){const bn=L()==='bn';return `<div class="vidempty"><strong style="color:var(--ink)">${bn?'এই জমির আসল ভিডিও এখনো যোগ হয়নি':'No real video of this field yet'}</strong><br>
+  ${bn?`দল মাঠে গিয়ে ২০–৩০ সেকেন্ডের ভিডিও করবে (শুধু প্রাপ্তবয়স্ক, কারো মুখ নয়, প্রতিষ্ঠানের অনুমতি নিয়ে)। ফাইলের নাম <b>media/${f.id}.mp4</b> দিলে এখানে নিজে থেকেই চলবে।`:`The team films 20–30 s at the field (adults only, no faces, with the station's permission). Save it as <b>media/${f.id}.mp4</b> and it plays here automatically.`}<br>
+  <label>${bn?'এই ফোনের একটি ভিডিও দেখুন':'Try a video from this phone'}<input type="file" accept="video/*" id="rfPick" hidden></label>
+  <div style="margin-top:6px;font-size:11px">${bn?'ভিডিও শুধু আপনার ফোনেই চলে, কোথাও আপলোড হয় না।':'The video plays only on your device; nothing is uploaded.'}</div></div>`}
+function renderRfTwin(){const f=RF(),el=$('rfTwin'),bn=L()==='bn';el.hidden=!f;$('simLbl').hidden=!f;$('topview').hidden=!f;$('toplbl').hidden=!f;$('minimapBox').hidden=!!f;if(!f)return;requestAnimationFrame(()=>ZVT.fit());
+  $('simLbl').textContent=bn?'পাশ থেকে দেখা (অনুমান): বাছাই করা পরিকল্পনায় সপ্তাহে সপ্তাহে ফসল কেমন হবে।':'Side view (simulated): how the chosen plan\'s crop should look, week by week.';
+  const ll={lat:f.lat,lng:f.lon};
+  el.innerHTML=`<div class="id">${f.id} · ${bn?'আসল জমি, আসল ভিডিও':'REAL FIELD, REAL VIDEO'}</div><strong>${f[L()]}</strong>
+   <div class="vid" id="rfVid"><video src="media/${f.id}.mp4" controls muted playsinline preload="metadata"></video></div>
+   <div class="maplinks" style="margin-top:10px"><a href="https://www.google.com/maps/@${ll.lat.toFixed(5)},${ll.lng.toFixed(5)},250m/data=!3m1!1e3" target="_blank" rel="noopener">${bn?'Google Maps-এ এই জমির স্যাটেলাইট ছবি':'This exact plot in Google Maps satellite'} ↗</a><a href="https://www.google.com/maps/search/?api=1&query=${ll.lat},${ll.lng}" target="_blank" rel="noopener">${bn?'রাস্তার ছবি ও দিক':'Directions & street photos'} ↗</a></div>`;
+  const v=el.querySelector('video');let tried=0;v.onerror=()=>{if(!tried++){v.src=`media/${f.id}.webm`;return}$('rfVid').outerHTML=rfVideoEmpty(f);bindPick(f)};}
+function bindPick(f){const i=$('rfPick');if(!i)return;i.onchange=()=>{const file=i.files&&i.files[0];if(!file)return;const u=URL.createObjectURL(file);
+  const box=i.closest('.vidempty');box.outerHTML=`<div class="vid" id="rfVid"><video src="${u}" controls autoplay muted playsinline loop></video><span class="pill" style="position:absolute;left:8px;top:8px;background:rgba(0,0,0,.6)">${L()==='bn'?'আপনার ভিডিও · শুধু এই ফোনে':'Your video · this device only'}</span></div>`;
+  const nv=$('rfVid').querySelector('video');nv.onerror=()=>toast(L()==='bn'?'এই প্রিভিউ ভিডিও আটকে দিয়েছে। অ্যাপটি নিজের ওয়েবসাইটে চালালে কাজ করবে।':'This preview blocked the video. It works when the app runs on its own website.')}}
+/* ---------- navigation ---------- */
+const NAVI=['field','now','crop','twin','flood','pics'];
+function go(s){S.screen=s;if(s!=='twin')setPlay(false);stopSpeak();document.querySelectorAll('.screen').forEach(el=>el.classList.toggle('on',el.id==='s-'+s));document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.go===s?'page':'false'));
+  if(s==='field'){renderRfField();setTimeout(initMap,60)}if(s==='prev'){renderPrev();renderFarmExtras()}if(s==='crop')renderPlans(false);if(s==='twin'){renderTwin();renderRfTwin();setTimeout(initMini,80)}if(s==='flood')renderFlood();if(s==='sources')renderSources();if(s==='help')renderHelp();$('main').scrollTop=0}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.go));
+$('confirmField').onclick=()=>go('prev');
+$('toCrop').onclick=()=>{S.optCrop=null;TWD=null;go('crop');renderPlans(true)};
+$('floodBtn').onclick=()=>{S.flooded=!S.flooded;S.optCrop=null;TWD=null;renderPrev();speak(S.flooded?(L()==='bn'?'জমিতে বন্যা হয়েছে':'My field flooded'):(L()==='bn'?'না':'No'))};
+$('srcBtn').onclick=()=>go('sources');
+document.querySelector('.logo').onclick=()=>go('start');
+$('teaser').onclick=()=>{S.fdist='feni';go('flood')};
+$('gps').onclick=()=>{
+  const done=(lat,lon,real)=>{S.rf=null;S.gps=true;S.optCrop=null;TWD=null;S.lat=lat;S.lon=lon;S.fieldLL=null;if(S.map){S.map.setView([lat,lon],17)}go('field');if(!real)toast(L()==='bn'?'এই প্রিভিউতে লোকেশন বন্ধ, তাই কুমিল্লার একটি নমুনা জমি দেখানো হচ্ছে। আসল অ্যাপে GPS আপনার জমি খুঁজে দেবে।':'Location is blocked in this preview, so a sample field in Cumilla is shown. In the real app, GPS finds your field.')};
+  if(!navigator.geolocation){done(23.4607,91.1809,false);return}
+  let settled=false;const t=setTimeout(()=>{if(!settled){settled=true;done(23.4607,91.1809,false)}},3500);
+  try{navigator.geolocation.getCurrentPosition(p=>{if(settled)return;settled=true;clearTimeout(t);done(p.coords.latitude,p.coords.longitude,true)},()=>{if(settled)return;settled=true;clearTimeout(t);done(23.4607,91.1809,false)},{timeout:3000})}catch(e){settled=true;clearTimeout(t);done(23.4607,91.1809,false)}
+};
+
+/* ---------- language / simple ---------- */
+function setLang(l){S.lang=l;save();render()}
+$('lang-en').onclick=()=>setLang('en');$('lang-bn').onclick=()=>setLang('bn');
+$('simple').onclick=()=>{S.simple=!S.simple;save();render();toast(S.simple?(L()==='bn'?'সহজ ভাষা চালু।':'Simple words on.'):(L()==='bn'?'পূর্ণ লেখা চালু।':'Full text on.'))};
+
+function render(){
+  document.body.classList.toggle('lang-bn',L()==='bn');document.documentElement.lang=L();
+  document.getElementById('app').classList.toggle('pics-mode',S.pics);
+  $('lang-en').setAttribute('aria-pressed',L()==='en');$('lang-bn').setAttribute('aria-pressed',L()==='bn');$('simple').setAttribute('aria-pressed',S.simple);
+  document.querySelectorAll('[data-t]').forEach(el=>{el.textContent=tr(T[el.dataset.t])});
+  document.querySelectorAll('[data-icon]').forEach(el=>{el.innerHTML=I[el.dataset.icon]});
+  $('speak').innerHTML=I.speaker;$('narr').innerHTML=I.speaker;$('playAll').innerHTML=I.speaker;$('playBtn').innerHTML=S.playing?I.pause:I.play;
+  document.querySelectorAll('nav button').forEach((b,i)=>b.innerHTML=I[NAVI[i]]+`<span>${T.nav[L()][i]}</span>`);
+  $('districts').innerHTML=DIST.map(d=>`<button class="chip" data-d="${d[0]}" aria-pressed="${d[0]===S.district}">${L()==='bn'?d[2]:d[1]}</button>`).join('');
+  document.querySelectorAll('#districts .chip').forEach(b=>b.onclick=()=>{const d=DIST.find(x=>x[0]===b.dataset.d);S.rf=null;S.gps=false;S.optCrop=null;TWD=null;S.district=d[0];S.lat=d[3];S.lon=d[4];S.fieldLL=null;if(S.map){S.map.setView([S.lat,S.lon],16);S.fieldLL={lat:S.lat+0.0004,lng:S.lon+0.0003};drawPoly()}go('field')});
+  renderRfList();
+  $('coords').textContent=RF()?(L()==='bn'?'আসল জমি · ':'Real field · ')+num(S.lat.toFixed(4))+'° N, '+num(S.lon.toFixed(4))+'° E':(L()==='bn'?'GPS চালু · ':'GPS on · ')+num(S.lat.toFixed(2))+'° N, '+num(S.lon.toFixed(2))+'° E';
+  $('teaser').innerHTML=`<span style="flex:0 0 auto">${I.rain}</span><span style="flex:1"><strong>${L()==='bn'?'আগস্ট ২০২৪-এর বন্যা':'The August 2024 flood'}</strong><br><span class="sub" style="font-size:11px">${L()==='bn'?'আসল NASA তথ্য · বন্যার পর মাটি কবে তৈরি হলো দেখুন ›':'Real NASA data · see when the soil was ready again ›'}</span></span>`;
+  netBanner();
+  if(S.screen==='field'){renderRfField();if(S.live){mapStatus();setAreaText();mapLinks();drawPoly()}else{drawMap();mapStatus();setAreaText();mapLinks()}}if(S.screen==='prev'){renderPrev();renderFarmExtras()}if(S.screen==='crop')renderPlans(false);if(S.screen==='twin'){renderTwin();renderRfTwin();initMini()}if(S.screen==='flood')renderFlood();if(S.screen==='sources')renderSources();if(S.screen==='help')renderHelp();
+  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.go===S.screen?'page':'false'));
+}
+render();
+/* wake the free server early, and take the district list from the API */
+load('/api/v1/districts',{}).then(res=>{const ds=res.env&&res.env.data&&res.env.data.districts;if(Array.isArray(ds)&&ds.length&&ds[0].name){DIST.length=0;ds.forEach(d=>DIST.push([d.id,d.name.en,d.name.bn,d.lat,d.lon]));if(S.screen==='start'||S.screen==='flood')render()}});
+})();
+</script>
+
+</body></html>

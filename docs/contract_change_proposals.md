@@ -92,3 +92,48 @@ the task list, but it is in the contract, so the website gets the mock instead o
 Every Bangla string in `app.py` (notices, labels, narration templates, error
 messages) was written with AI help. **A Bangla speaker on the team should
 review them** before the demo.
+
+---
+
+## 9. Task 12: what the website needs (proposed, not yet agreed)
+
+Task 12 connected `web/app/` to the API. These additions are **new optional
+fields and parameters only**; nothing existing was renamed or removed, so the
+mock files still match the contract test.
+
+### 9.1 New parameters and endpoints
+
+| # | Change | Why |
+|---|---|---|
+| 9.1.1 | Optional **`lat` & `lon`** on `/advisory`, `/post-flood` and `/field-twin`. The backend picks the nearest of the 5 district points (`district_metadata.csv`); farther than 60 km → `DISTRICT_NOT_COVERED` (400). `lat`/`lon` win over `district`. Only one of them, or a non-number → `BAD_PARAMETER`. | GPS and real fields: the website never picks the district itself. The 60 km limit is a CropShift assumption (`API_ASSUMPTIONS.district_max_distance_km`). |
+| 9.1.2 | New `data.location` on those endpoints: `{lat, lon, district, district_name, distance_km (measure, src assumptions), method}`, or `null` when `district` was used. | The site shows which district's data answered a GPS point. |
+| 9.1.3 | **`GET /api/v1/images/{name}`** serves the OPERA DSWx-S1 maps in `docs/results/img/` (`dswx_flood_<district>_<date>.png` only; anything else → 404 error envelope). | NASA flood imagery comes through the backend; the website's direct NASA GIBS tile layer was removed. |
+| 9.1.4 | `GET /` redirects to `/docs`. | A friendlier landing page for the API. |
+
+### 9.2 New response fields
+
+| # | Endpoint | Field | Why |
+|---|---|---|---|
+| 9.2.1 | `/advisory`, `/post-flood` options | `problem_line: {en, bn}`, e.g. "Problems in 0 of 24 years. Checked: waterlogging." | The website shows it as is (it must not build sentences from numbers). |
+| 9.2.2 | `/advisory` | `aman_option`: `{crop, crop_name, sowing_window{start,end,src}, problem_line, coverage_notice}` or `null`. Shown first when present; it has no risk numbers. | Task 6c's aman note was dropped by the API before. |
+| 9.2.3 | `/post-flood` | `soil_back_to_normal.curve: {src, units, rows:[{date, value, threshold}]}`: SMAP root-zone moisture and the day's 80th-percentile "normal" level, 2 weeks before the flood to 3 weeks after recovery. | The days-to-normal chart. Computed by `post_flood.smap_recovery_curve()` (tested). |
+| 9.2.4 | `/post-flood` | `flood_images: [{date, path, caption{en,bn}, src}]` (flood date −7 to +120 days). | The radar maps on the Flood screen. |
+| 9.2.5 | `/field-twin` | `weekly.rows[].events` (`heat`, `night_heat`, `cold`, `rain`, `dry`, `irrigation`, or `ok`; most important first) and `weekly.events_rule {text, thresholds[], rain_week}`. Heat/cold use the crop's sourced thresholds; "rain" = at least 20 mm that week (assumption `twin_rain_week_mm`). | The animation shows what happened each week without the website judging risks. |
+
+### 9.3 Inputs the API does not support yet ("coming soon" on the website)
+
+The Farm screen keeps these visible, labelled **COMING SOON**. They are not
+sent to the API and do not change any result.
+
+| Input | Proposed API support |
+|---|---|
+| **Water access** (rain only / 1–2 irrigations / regular / plenty) | `irrigation=none\|limited\|regular\|full` on `/advisory`, filtering or re-ranking with a sourced rule (see 2.3). |
+| **Priorities** (save water, healthier soil, lowest risk, more crops a year) | `priority=` on `/advisory` choosing the ranking key (e.g. worst-20% irrigation vs problem years). Needs agreement on which keys are honest. |
+| **Soil** (texture, pH, organic matter) | A `/soil?lat=&lon=` endpoint from SoilGrids 250 m (`src/acquire/fetch_soilgrids.py` exists). pH and nutrients still need a soil test; the site says so. |
+
+### 9.4 Website config
+
+The contract says `web/config.js`; the site lives in `web/app/`, so the line is
+`web/app/config.js`. `"mock"` reads `../mock/*.json`, so serve the `web/`
+folder when testing mock mode.
+

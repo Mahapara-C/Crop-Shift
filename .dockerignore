@@ -10,6 +10,7 @@ data/raw/
 demo_fixtures/
 notebooks/
 docs/
+!docs/results/img/
 scripts/
 tests/
 **/test_*.py

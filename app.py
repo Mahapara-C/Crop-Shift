@@ -31,7 +31,7 @@ import pandas as pd
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -97,7 +97,18 @@ API_ASSUMPTIONS = {
         "text": "Water the method sees with no flood (wet paddies, ponds, radar speckle). "
                 "'Water mostly gone' = 90% of the water above this floor has drained "
                 "(docs/results/post_flood.md)."},
+    "district_max_distance_km": {
+        "value": 60, "unit": "km",
+        "text": "A GPS point (lat, lon) is served by the nearest of the 5 district points "
+                "(data/processed/district_metadata.csv) only if it lies within this distance; "
+                "farther points get DISTRICT_NOT_COVERED."},
+    "twin_rain_week_mm": {
+        "value": 20, "unit": "mm/week",
+        "text": "In the field-twin replay a week is flagged 'rain' when IMERG rain that week "
+                "is at least this much (for the animation only; not a risk rule)."},
 }
+IMAGE_DIR = os.path.join(ROOT, "docs", "results", "img")
+IMAGE_RE = re.compile(r"^dswx_flood_([a-z]+)_(\d{4}-\d{2}-\d{2})\.png$")
 
 NOT_ALL_CHECKED = {"en": "Not all risks for this crop are checked yet.",
                    "bn": "এই ফসলের সব ঝুঁকি এখনও যাচাই করা হয়নি।"}
@@ -447,6 +458,56 @@ def check_district(district):
     return district.lower()
 
 
+def haversine_km(lat1, lon1, lat2, lon2):
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = p2 - p1, math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * 6371.0088 * math.asin(math.sqrt(a))
+
+
+def nearest_district(lat, lon):
+    """(district id, km) of the nearest district point in district_metadata.csv."""
+    meta = district_metadata()
+    dists = {d: haversine_km(lat, lon, float(meta.loc[d, "latitude"]), float(meta.loc[d, "longitude"]))
+             for d in DISTRICTS}
+    did = min(dists, key=dists.get)
+    return did, dists[did]
+
+
+def _coord(name, value, low, high):
+    try:
+        out = float(value)
+    except ValueError:
+        raise ApiError("BAD_PARAMETER", f"{name} must be a number, got {value!r}.", name) from None
+    if not (low <= out <= high) or math.isnan(out):
+        raise ApiError("BAD_PARAMETER", f"{name} must be between {low} and {high}.", name)
+    return out
+
+
+def resolve_location(district, lat, lon):
+    """-> (district id, location block or None). With lat & lon, the backend
+    (never the website) picks the nearest district point, up to
+    district_max_distance_km away; lat/lon win over `district`."""
+    if lat in (None, "") and lon in (None, ""):
+        return check_district(district), None
+    if lat in (None, "") or lon in (None, ""):
+        raise ApiError("BAD_PARAMETER", "Give both lat and lon, or neither.", "lat/lon")
+    la, lo = _coord("lat", lat, -90, 90), _coord("lon", lon, -180, 180)
+    did, km = nearest_district(la, lo)
+    limit = API_ASSUMPTIONS["district_max_distance_km"]["value"]
+    if km > limit:
+        raise ApiError("DISTRICT_NOT_COVERED",
+                       f"This point is {km:.0f} km from the nearest CropShift district point "
+                       f"({DISTRICTS[did]['en']}). CropShift covers points within {limit} km of "
+                       f"Cumilla, Feni, Brahmanbaria, Noakhali and Sylhet.")
+    return did, {"lat": round(la, 5), "lon": round(lo, 5), "district": did,
+                 "district_name": DISTRICTS[did],
+                 "distance_km": measure(km, "km to the district point", ["assumptions"], 1),
+                 "method": {"en": f"Nearest of the 5 CropShift district points (within {limit} km).",
+                            "bn": f"CropShift-এর ৫টি জেলা-বিন্দুর মধ্যে সবচেয়ে কাছেরটি "
+                                  f"({bn_digits(limit)} কিমির মধ্যে)।"}}
+
+
 def check_date(name, value, required=True):
     if value is None or value == "":
         if required:
@@ -495,6 +556,44 @@ def checked_text(hazards):
                 "bn": "এখনও কোনো ঝুঁকি যাচাই করা যায়নি (উৎসসহ সীমা নেই)।"}
     return {"en": "Checked: " + ", ".join(rc.hazard_label(h) for h in hazards) + ".",
             "bn": "যাচাই করা হয়েছে: " + ", ".join(HAZARD_BN.get(h, h) for h in hazards) + "।"}
+
+
+def problem_line(option, n):
+    """{en, bn} line that always says what was checked, e.g. "Problems in 0 of
+    24 years. Checked: night heat." (never implies safety beyond that)."""
+    if option["sowing_date"] is None:
+        return {"en": "No sowing date: more than 4 weeks past the recommended window.",
+                "bn": "বপনের তারিখ নেই: সুপারিশকৃত সময় পেরিয়ে ৪ সপ্তাহের বেশি।"}
+    checked = checked_text(option["hazards_checked"])
+    if not option["hazards_checked"]:
+        return {"en": f"Not assessed. {checked['en']}", "bn": f"মূল্যায়ন হয়নি। {checked['bn']}"}
+    py = _fmt(option["problem_years"])
+    return {"en": f"Problems in {py} of {n} years. {checked['en']}",
+            "bn": f"{bn_digits(n)} বছরের মধ্যে {bn_digits(py)} বছরে সমস্যা। {checked['bn']}"}
+
+
+def aman_block(result):
+    """The "aman transplanting still possible" note rotation_options() may add
+    (task 6c), as {crop, crop_name, sowing_window, problem_line, coverage_notice};
+    None when absent. It carries no risk numbers."""
+    option = next((o for o in result["options"] if o["crop"] == "aman_rice"), None)
+    if option is None:
+        return None
+    year = pd.Timestamp(result["earliest_sowing_date"]).year
+    start, end = (tuple(int(x) for x in s.split("-")) for s in option["window"].split(" to "))
+    src = list(dict.fromkeys(ref_ids_for(option.get("citations", [])))) or ["calendar"]
+    end_date = str(pd.Timestamp(year, *end).date())
+    return {
+        "crop": "aman_rice",
+        "crop_name": {"en": "Aman rice", "bn": "আমন ধান"},
+        "sowing_window": {"start": str(pd.Timestamp(year, *start).date()), "end": end_date,
+                          "src": src},
+        "problem_line": {"en": option["problem_line"],
+                         "bn": f"আমন রোপণ এখনও সম্ভব, {bn_digits(end_date)} পর্যন্ত। আমনের "
+                               f"আবহাওয়া-ঝুঁকি এখনও যাচাই করা হয়নি।"},
+        "coverage_notice": {"en": "Weather risk for aman is not assessed yet.",
+                            "bn": "আমনের আবহাওয়া-ঝুঁকি এখনও যাচাই করা হয়নি।"},
+    }
 
 
 def threshold_measure(hazard_spec, src):
@@ -560,6 +659,7 @@ def crop_option(district, option, season):
                           "src": window_src(crop) or csrc},
         "window_status": window_status(option),
         "problem_years": measure(option["problem_years"], years_unit, csrc),
+        "problem_line": problem_line(option, n),
         "hazards_checked": hazards,
         "hazards_checked_text": checked_text(option["hazards_checked"]),
         "hazards_missing": [{"hazard": h, "label": hazard_label(h)} for h in option["hazards_missing"]],
@@ -643,7 +743,8 @@ def warm_caches():
         weather(district)
         smap(district)
     for district in ("feni", "cumilla", "noakhali", "brahmanbaria"):
-        smap_recovery(district, "2024-08-21")   # the Aug-2024 demo flood
+        soil = smap_recovery(district, "2024-08-21")   # the Aug-2024 demo flood
+        smap_curve_block(district, pd.Timestamp("2024-08-21"), soil["normal_date"])
 
 
 @asynccontextmanager
@@ -719,13 +820,13 @@ def districts():
 
 @app.get("/api/v1/advisory")
 def advisory(district: str = None, prev_harvest: str = None, flood_ready: str = None,
-             lang: str = "en"):
+             lang: str = "en", lat: str = None, lon: str = None):
     endpoint = "/api/v1/advisory"
     request = {"district": district, "prev_harvest": prev_harvest, "flood_ready": flood_ready,
-               "lang": lang}
+               "lang": lang, "lat": lat, "lon": lon}
 
     def build():
-        did = check_district(district)
+        did, location = resolve_location(district, lat, lon)
         harvest = check_date("prev_harvest", prev_harvest)
         ready = check_date("flood_ready", flood_ready, required=False)
         check_lang(lang)
@@ -748,6 +849,8 @@ def advisory(district: str = None, prev_harvest: str = None, flood_ready: str = 
                              f"বছরের সেচ দিয়ে সাজানো।"},
             "options": ranked,
             "filtered_out": filtered,
+            "aman_option": aman_block(result),
+            "location": location,
         }
         name = DISTRICTS[did]
         earliest = result["earliest_sowing_date"]
@@ -973,13 +1076,59 @@ def flood_water(district, flood):
     return block, rec
 
 
+@functools.lru_cache(maxsize=64)
+def smap_curve(district, start, end):
+    curve = pf.smap_recovery_curve(smap(district), start, end)
+    return [{"date": str(r.date.date()), "value": _num(r.value, 3), "threshold": _num(r.threshold, 3)}
+            for r in curve.itertuples()]
+
+
+def smap_curve_block(district, flood, normal_date):
+    """SMAP root-zone moisture and its 'normal' threshold, from 2 weeks before
+    the flood to 3 weeks after the soil was back to normal (or 90 days)."""
+    series = smap(district)
+    end = pd.Timestamp(normal_date) if normal_date else flood + pd.Timedelta(days=90)
+    end = min(end + pd.Timedelta(days=21), series.index.max())
+    start = max(flood - pd.Timedelta(days=14), series.index.min())
+    return {"src": ["smap", "post_flood"],
+            "units": {"value": "m³/m³ root-zone soil moisture (SMAP)",
+                      "threshold": "m³/m³, 80th percentile of other years (same dates ±15 days)"},
+            "rows": smap_curve(district, str(start.date()), str(end.date()))}
+
+
+def image_files():
+    """Whitelist: only docs/results/img/dswx_flood_<district>_<date>.png."""
+    if not os.path.isdir(IMAGE_DIR):
+        return {}
+    return {name: IMAGE_RE.match(name).groups() for name in sorted(os.listdir(IMAGE_DIR))
+            if IMAGE_RE.match(name)}
+
+
+def flood_images(district, flood):
+    """OPERA DSWx-S1 flood-water maps for this district from 7 days before to
+    120 days after the flood date, served by /api/v1/images/{name}."""
+    name = DISTRICTS[district]
+    out = []
+    for fname, (did, date) in image_files().items():
+        day = pd.Timestamp(date)
+        if did != district or not (flood - pd.Timedelta(days=7) <= day <= flood + pd.Timedelta(days=120)):
+            continue
+        out.append({"date": date, "path": f"/api/v1/images/{fname}", "src": ["opera"],
+                    "caption": {"en": f"Flood water seen by radar (NASA OPERA DSWx-S1) around the "
+                                      f"{name['en']} point, {date}.",
+                                "bn": f"রাডারে দেখা বন্যার পানি (NASA OPERA DSWx-S1), {name['bn']} "
+                                      f"বিন্দুর চারপাশে, {bn_digits(date)}।"}})
+    return out
+
+
 @app.get("/api/v1/post-flood")
-def post_flood(district: str = None, flood_date: str = None, lang: str = "en"):
+def post_flood(district: str = None, flood_date: str = None, lang: str = "en",
+               lat: str = None, lon: str = None):
     endpoint = "/api/v1/post-flood"
-    request = {"district": district, "flood_date": flood_date, "lang": lang}
+    request = {"district": district, "flood_date": flood_date, "lang": lang, "lat": lat, "lon": lon}
 
     def build():
-        did = check_district(district)
+        did, location = resolve_location(district, lat, lon)
         flood = check_date("flood_date", flood_date)
         check_lang(lang)
         series = smap(did)
@@ -1008,6 +1157,7 @@ def post_flood(district: str = None, flood_date: str = None, lang: str = "en"):
                          "bn": "টানা ৭ দিন মাটির আর্দ্রতা অন্য বছরের একই সময়ের (±১৫ দিন) "
                                "৮০তম শতাংশের সমান বা নিচে।"},
                 "sensitivity": sensitivity,
+                "curve": smap_curve_block(did, flood, soil["normal_date"]),
             },
             "earliest_sowing_date": ({"date": earliest,
                                       "basis": {"en": "The later of: soil back to normal, flood "
@@ -1017,6 +1167,8 @@ def post_flood(district: str = None, flood_date: str = None, lang: str = "en"):
                                       "src": ssrc + (["opera"] if water_result else [])}
                                      if earliest else None),
             "still_possible": [], "no_longer_possible": [], "cascade": None,
+            "flood_images": flood_images(did, flood),
+            "location": location,
             "soil_test_advice": {"en": "Satellites cannot measure soil pH or nutrients. Get a soil "
                                        "test at SRDI or your Upazila Agriculture Office.",
                                  "bn": "স্যাটেলাইট মাটির pH বা পুষ্টি মাপতে পারে না। SRDI বা "
@@ -1130,14 +1282,66 @@ def stage_names(crop, days):
     return (names + [names[-1]] * days)[:days]
 
 
+def twin_heat_limits(crop):
+    """The crop's sourced temperature thresholds (from data/reference via the
+    risk calendar), used only to flag weeks in the replay."""
+    csrc = crop_src(crop)
+    out = []
+    for h in crop_specs()[crop]["hazards"]:
+        if h["kind"] != "temp":
+            continue
+        event = ("heat" if h["variable"] == "temp_max_c" else
+                 "night_heat" if h["op"] == ">" else "cold")
+        out.append({"event": event, "hazard": h["hazard"], "label": hazard_label(h["hazard"]),
+                    "limit": threshold_measure(h, csrc)})
+    return out
+
+
+def twin_week_events(row, heat_limits):
+    """Adds row["events"]: what to animate this week, most important first."""
+    events = []
+    for lim in heat_limits:
+        v = lim["limit"]["value"]
+        if lim["event"] == "heat" and (row["tmax_highest_c"] or 0) > v:
+            events.append("heat")
+        elif lim["event"] == "night_heat" and (row["tmin_mean_c"] or 0) > v:
+            events.append("night_heat")
+        elif lim["event"] == "cold" and row["tmin_mean_c"] is not None and row["tmin_mean_c"] < v:
+            events.append("cold")
+    if (row["rain_mm"] or 0) >= API_ASSUMPTIONS["twin_rain_week_mm"]["value"]:
+        events.append("rain")
+    if row["stress_days"] > 0:
+        events.append("dry")
+    if row["irrigation_events"] > 0:
+        events.append("irrigation")
+    row["events"] = list(dict.fromkeys(events)) or ["ok"]
+    return row
+
+
+def twin_events_rule(heat_limits):
+    return {
+        "text": {"en": "Week flags for the replay: heat = hottest day above the crop's heat "
+                       "threshold; night heat / cold = mean night temperature past the threshold; "
+                       "rain = a wet week; dry = rainfed water-stress days; irrigation = a "
+                       "watering was needed.",
+                 "bn": "সাপ্তাহিক চিহ্ন: গরম = সবচেয়ে গরম দিন ফসলের সীমার উপরে; রাতের গরম / ঠান্ডা = "
+                       "রাতের গড় তাপমাত্রা সীমা পেরিয়েছে; বৃষ্টি = ভেজা সপ্তাহ; শুকনো = সেচ ছাড়া "
+                       "পানির অভাবের দিন; সেচ = পানি দিতে হয়েছে।"},
+        "thresholds": heat_limits,
+        "rain_week": measure(API_ASSUMPTIONS["twin_rain_week_mm"]["value"], "mm/week",
+                             ["imerg", "assumptions"]),
+    }
+
+
 @app.get("/api/v1/field-twin")
 def field_twin(district: str = None, year: str = None, crop: str = None, sow_date: str = None,
-               lang: str = "en"):
+               lang: str = "en", lat: str = None, lon: str = None):
     endpoint = "/api/v1/field-twin"
-    request = {"district": district, "year": year, "crop": crop, "sow_date": sow_date, "lang": lang}
+    request = {"district": district, "year": year, "crop": crop, "sow_date": sow_date, "lang": lang,
+               "lat": lat, "lon": lon}
 
     def build():
-        did = check_district(district)
+        did, location = resolve_location(district, lat, lon)
         if crop == "boro_rice":
             raise ApiError("BAD_PARAMETER", "The week-by-week replay for boro rice (ponded paddy) is "
                                             "not built yet.", "crop")
@@ -1166,6 +1370,7 @@ def field_twin(district: str = None, year: str = None, crop: str = None, sow_dat
         daily, irrigated = result["daily"], result["daily_irrigated"]
         season_w = w.loc[daily.index]
         stages = stage_names(c, len(daily))
+        heat_limits = twin_heat_limits(c)
         sm = smap(did)["sm_rootzone"]
         sm_season = sm.reindex(daily.index)
         smap_ok = bool(sm_season.notna().any())
@@ -1173,7 +1378,7 @@ def field_twin(district: str = None, year: str = None, crop: str = None, sow_dat
         for start in range(0, len(daily), 7):
             sl = slice(start, start + 7)
             d, irr, ww = daily.iloc[sl], irrigated.iloc[sl], season_w.iloc[sl]
-            weeks.append({
+            weeks.append(twin_week_events({
                 "week_start": str(d.index[0].date()), "days": len(d),
                 "stage": stages[start],
                 "rain_mm": _num(d["rain_mm"].sum(), 1),
@@ -1188,11 +1393,12 @@ def field_twin(district: str = None, year: str = None, crop: str = None, sow_dat
                 "irrigation_events": int((irr["irrigation_mm"] > 0).sum()),
                 "smap_rootzone_m3m3": (_num(sm_season.iloc[sl].mean(), 3)
                                        if sm_season.iloc[sl].notna().any() else None),
-            })
+            }, heat_limits))
         wsrc = water_src(c, did)
         data = {
             "district": did, "year": yr, "crop": c, "crop_name": CROP_NAMES[c],
             "sow_date": str(sow.date()), "season_end": result["harvest_date"],
+            "location": location,
             "is_forecast": False,
             "label": {"en": f"What happened in {yr} with NASA data for the area around your field. "
                             f"An example, not a forecast.",
@@ -1207,6 +1413,7 @@ def field_twin(district: str = None, year: str = None, crop: str = None, sow_dat
                           "irrigation_mm": "mm/week (if irrigated)",
                           "irrigation_events": "waterings/week (if irrigated)",
                           "smap_rootzone_m3m3": "m³/m³ (SMAP, for comparison)"},
+                "events_rule": twin_events_rule(heat_limits),
                 "rows": weeks,
             },
             "totals": {
@@ -1257,6 +1464,23 @@ def field_twin(district: str = None, year: str = None, crop: str = None, sow_dat
         return data, narrate(texts, fallback, data), notices
 
     return respond(endpoint, request, build)
+
+
+# ---------------- images and the root ----------------
+
+@app.get("/api/v1/images/{name}")
+def images(name: str):
+    """NASA OPERA DSWx-S1 flood maps made in docs/results/img/ (whitelist only)."""
+    if name not in image_files():
+        return error_response("/api/v1/images", {"name": name},
+                              ApiError("NO_DATA_FOR_PERIOD", f"No such image: {name!r}.", name))
+    return FileResponse(os.path.join(IMAGE_DIR, name), media_type="image/png",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse("/docs")
 
 
 # ---------------- not built yet: serve the mock ----------------

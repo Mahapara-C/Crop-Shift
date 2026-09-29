@@ -7,3 +7,14 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/v1/districts
+
+  # The website: static files only (web/app/), it reads the API above.
+  - type: web
+    name: cropshift-web
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: ./web/app
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache

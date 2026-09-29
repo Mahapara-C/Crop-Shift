@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from post_flood import (smap_days_to_normal, water_persistence, earliest_sowing_date,
-                        flood_recession,
+                        flood_recession, smap_recovery_curve,
                         crops_still_possible, CROP_CALENDAR_PATH)
 
 
@@ -36,6 +36,34 @@ def _synthetic_smap(flood_year=2024, n_other_years=4, dry_value=0.20, wet_value=
             values.append(dry_value)
     series = pd.Series(values, index=pd.DatetimeIndex(dates), name="sm_rootzone")
     return series.groupby(series.index).first().sort_index(), flood_start
+
+
+def test_recovery_curve_has_values_and_other_year_thresholds():
+    series, flood = _synthetic_smap()
+    end = flood + pd.Timedelta(days=20)
+    curve = smap_recovery_curve(series, flood, end)
+    assert list(curve.columns) == ["date", "value", "threshold"]
+    assert curve["date"].iloc[0] == flood and curve["date"].iloc[-1] == end
+    assert len(curve) == 21
+    assert curve["value"].iloc[0] == pytest.approx(0.45)
+    # other years are flat at 0.20, so every threshold is 0.20 (own year excluded)
+    assert np.allclose(curve["threshold"], 0.20)
+
+
+def test_recovery_curve_matches_days_to_normal():
+    series, flood = _synthetic_smap(recovery_day=10)
+    result = smap_days_to_normal(series, flood)
+    curve = smap_recovery_curve(series, flood, flood + pd.Timedelta(days=30))
+    normal = curve[curve["date"] == pd.Timestamp(result["normal_date"])].iloc[0]
+    assert normal["value"] <= normal["threshold"]
+    before = curve[curve["date"] < pd.Timestamp(result["normal_date"])]
+    assert (before["value"] > before["threshold"]).any()
+
+
+def test_recovery_curve_rejects_reversed_dates():
+    series, flood = _synthetic_smap()
+    with pytest.raises(ValueError):
+        smap_recovery_curve(series, flood, flood - pd.Timedelta(days=1))
 
 
 def test_recovers_after_expected_day():
